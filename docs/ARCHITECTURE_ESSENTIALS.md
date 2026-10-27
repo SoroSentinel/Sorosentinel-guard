@@ -107,8 +107,8 @@ Full detail: `PRD.md` §14 (product) and `ARCHITECTURE.md` §17 (technical). App
 | Hostile fetches (SSRF via `stellar.toml`) | Any private-range egress | Isolated fetcher, allowlist, caps |
 | Unfunded running costs | Cost > runway | Cost model from a real one-week ingest run (Phase 0) |
 
-### Open decision
-Phase 1 vertical slice: **Guard effect analysis + minimal Intel (lookalike, home-domain)** vs. full Intel first. Recommended: the former. Not yet applied to build order (§10) until confirmed.
+### Decided: Phase 1 slice (ADR 0002)
+Phase 1 vertical slice is **Guard effect analysis + minimal Intel (lookalike, home-domain)**, accepted 2026-10-27. See `docs/adr/0002-phase1-slice.md`.
 
 ### First experiments
 E1 wallet-team conversations · E2 replay ≥10k historical txs through decoder · E3 labeled corpus + per-detector precision · E4 one-week ingest cost run · E5 auth-entry-only analysis spike.
@@ -151,4 +151,4 @@ E1 wallet-team conversations · E2 replay ≥10k historical txs through decoder 
 
 **Kept (don't cut):** fail-closed renderer + blocklist lint, immutable evidence + statement history, lazy entity creation, `as_of`, WASM-parse sandbox, cross-repo contract tests, effect-first Guard, simple signed snapshot, append-only `verdict_events`.
 
-**Open decisions (not applied):** (1) Phase 1 slice = Guard effect analysis + minimal Intel; (2) defer Scan beyond minimal library until E3 shows signal. Repo/language split (3 repos) is kept per your decision.
+**Decisions:** (1) Phase 1 slice = Guard effect analysis + minimal Intel: **accepted** (ADR 0002). (2) Defer Scan beyond minimal library until E3 shows signal: **still open**. Repo/language split (3 repos) is kept per your decision.
