@@ -26,9 +26,37 @@ export interface UncoveredOperation {
   reason: UncoveredReason;
 }
 
+/** Signer key kinds. hash_x and pre_auth_tx have no visible owner key. */
+export type SignerType = "ed25519" | "pre_auth_tx" | "hash_x" | "ed25519_signed_payload";
+
+/** Changes to an account other than balances. `operationIndex` points at the operation that causes it. */
+export type AccountEffect =
+  /** Trustline created or limit changed (`limit` > 0), or removed (`limit` = 0). */
+  | { kind: "trustline"; operationIndex: number; account: string; asset: string; limit: bigint }
+  /** Signer added or re-weighted (`weight` > 0), or removed (`weight` = 0). `signer` is the strkey. */
+  | { kind: "signer"; operationIndex: number; account: string; signer: string; signerType: SignerType; weight: number }
+  /** Only the fields the operation sets are non-null. */
+  | {
+      kind: "thresholds";
+      operationIndex: number;
+      account: string;
+      masterWeight: number | null;
+      low: number | null;
+      medium: number | null;
+      high: number | null;
+    }
+  | { kind: "flags"; operationIndex: number; account: string; set: number | null; clear: number | null }
+  /** Raw bytes only: the home domain is untrusted and is sanitized at display time. */
+  | { kind: "home_domain"; operationIndex: number; account: string; bytesHex: string }
+  | { kind: "inflation_destination"; operationIndex: number; account: string; destination: string }
+  /** The account is removed and its entire native balance moves to `destination` (amount unknown without ledger data). */
+  | { kind: "merge"; operationIndex: number; account: string; destination: string };
+
 export interface EffectsResult {
   /** Aggregated per (account, asset), worst case first. */
   effects: BalanceEffect[];
+  /** Non-balance changes, in operation order. */
+  accountEffects: AccountEffect[];
   /** Any entry here means the effects are incomplete: the analysis is at best `partial`. */
   uncovered: UncoveredOperation[];
 }

@@ -10,7 +10,7 @@ import {
 } from "@stellar/stellar-sdk/base";
 import { describe, expect, it } from "vitest";
 
-import { decodeForAnalysis, deriveBalanceEffects } from "../src/index.ts";
+import { decodeForAnalysis, deriveEffects } from "../src/index.ts";
 import type { BalanceEffect, EffectsResult } from "../src/index.ts";
 
 const FIXTURES = new URL("../../../fixtures/tx/", import.meta.url);
@@ -27,7 +27,7 @@ function effectsOf(fixture: string): EffectsResult {
   const f = JSON.parse(readFileSync(new URL(fixture, FIXTURES), "utf8")) as { xdr: string; network_passphrase: string };
   const res = decodeForAnalysis(f.xdr, f.network_passphrase);
   if (!res.ok) throw new Error(res.reason);
-  return deriveBalanceEffects(res.input);
+  return deriveEffects(res.input);
 }
 
 const eff = (account: string, asset: string, deltaMin: bigint, deltaMax: bigint | null): BalanceEffect => ({
@@ -42,6 +42,7 @@ describe("balance effects", () => {
   it("payment: sender loses amount plus up to the fee, receiver gains amount", () => {
     expect(effectsOf("benign/payment_native.json")).toEqual({
       effects: [eff(S, "native", -125_000_100n, -125_000_000n), eff(OTHER, "native", 125_000_000n, 125_000_000n)],
+      accountEffects: [],
       uncovered: [],
     });
   });
@@ -88,15 +89,45 @@ describe("balance effects", () => {
     expect(effectsOf("hostile/muxed_source.json").effects[0]?.account).toBe(S);
   });
 
-  it("buried account-control change is reported as uncovered, never dropped", () => {
+  it("buried account-control change surfaces as signer and threshold effects", () => {
     const r = effectsOf("hostile/padding_buried_set_options.json");
-    expect(r.uncovered).toEqual([{ index: 49, reason: "not_derived_yet" }]);
+    expect(r.uncovered).toEqual([]);
     // 49 one-stroop payments plus a fee of 100 stroops per operation (50 operations).
     expect(r.effects[0]).toEqual(eff(S, "native", -5_049n, -49n));
+    expect(r.accountEffects).toEqual([
+      { kind: "signer", operationIndex: 49, account: S, signer: OTHER, signerType: "ed25519", weight: 255 },
+      { kind: "thresholds", operationIndex: 49, account: S, masterWeight: 0, low: null, medium: null, high: null },
+    ]);
+  });
+
+  it("change trust adds a trustline with the default maximum limit", () => {
+    const r = effectsOf("benign/change_trust.json");
+    expect(r.uncovered).toEqual([]);
+    expect(r.accountEffects).toEqual([
+      { kind: "trustline", operationIndex: 0, account: S, asset: USDC, limit: 9_223_372_036_854_775_807n },
+    ]);
+  });
+
+  it("set options reports the added ed25519 signer", () => {
+    expect(effectsOf("benign/set_options_add_signer.json").accountEffects).toEqual([
+      { kind: "signer", operationIndex: 0, account: S, signer: OTHER, signerType: "ed25519", weight: 1 },
+    ]);
+  });
+
+  it("a hash(x) signer is typed as hash_x", () => {
+    const [e] = effectsOf("hostile/hashx_signer.json").accountEffects;
+    expect(e).toMatchObject({ kind: "signer", signerType: "hash_x", weight: 1 });
+    expect(e?.kind === "signer" && e.signer.startsWith("X")).toBe(true);
+  });
+
+  it("account merge moves the whole native balance to the destination", () => {
+    const r = effectsOf("benign/account_merge.json");
+    expect(r.uncovered).toEqual([]);
+    expect(r.accountEffects).toEqual([{ kind: "merge", operationIndex: 0, account: S, destination: OTHER }]);
   });
 
   it("operations without derived effects are listed as uncovered", () => {
-    for (const f of ["benign/change_trust.json", "benign/set_options_add_signer.json", "benign/account_merge.json", "benign/invoke_contract.json"]) {
+    for (const f of ["benign/invoke_contract.json", "benign/manage_data_decode_only.json", "benign/decode_only_clawback.json"]) {
       expect(effectsOf(f).uncovered).toEqual([{ index: 0, reason: "not_derived_yet" }]);
     }
   });
@@ -107,6 +138,47 @@ describe("balance effects", () => {
 });
 
 describe("hostile operations", () => {
+  function rawOp(body: xdr.OperationBody) {
+    const tx = new TransactionBuilder(new Account(S, "1"), { fee: "100", networkPassphrase: Networks.TESTNET })
+      .setTimebounds(0, 1)
+      .addOperation(new xdr.Operation({ sourceAccount: null, body }))
+      .build();
+    return decodeForAnalysis(tx.toXDR(), Networks.TESTNET);
+  }
+
+  const setOpts = (over: Partial<Record<"masterWeight" | "lowThreshold" | "highThreshold", number>>, signerWeight?: number) =>
+    xdr.OperationBody.setOptions(
+      new xdr.SetOptionsOp({
+        inflationDest: null,
+        clearFlags: null,
+        setFlags: null,
+        masterWeight: over.masterWeight ?? null,
+        lowThreshold: over.lowThreshold ?? null,
+        medThreshold: null,
+        highThreshold: over.highThreshold ?? null,
+        homeDomain: null,
+        signer:
+          signerWeight === undefined
+            ? null
+            : new xdr.Signer({ key: xdr.SignerKey.signerKeyTypeEd25519(key(2).rawPublicKey()), weight: signerWeight }),
+      }),
+    );
+
+  it.each([
+    ["master weight 256", () => rawOp(setOpts({ masterWeight: 256 }))],
+    ["high threshold 1000", () => rawOp(setOpts({ highThreshold: 1000 }))],
+    ["signer weight 300", () => rawOp(setOpts({}, 300))],
+    ["negative trustline limit", () => rawOp(xdr.OperationBody.changeTrust(new xdr.ChangeTrustOp({ line: xdr.ChangeTrustAsset.assetTypeNative(), limit: -1n })))],
+    ["trustline to the native asset", () => rawOp(xdr.OperationBody.changeTrust(new xdr.ChangeTrustOp({ line: xdr.ChangeTrustAsset.assetTypeNative(), limit: 5n })))],
+  ])("%s is marked invalid, never a clean effect", (_n, build) => {
+    // The SDK builds and decodes these, so Guard's own range checks must catch them.
+    const res = build();
+    if (!res.ok) throw new Error(res.reason);
+    const r = deriveEffects(res.input);
+    expect(r.uncovered).toEqual([{ index: 0, reason: "invalid_operation" }]);
+    expect(r.accountEffects).toEqual([]);
+  });
+
   function rawPayment(asset: xdr.Asset, amount: bigint): EffectsResult {
     const op = new xdr.Operation({
       sourceAccount: null,
@@ -120,7 +192,7 @@ describe("hostile operations", () => {
       .build();
     const res = decodeForAnalysis(tx.toXDR(), Networks.TESTNET);
     if (!res.ok) throw new Error(res.reason);
-    return deriveBalanceEffects(res.input);
+    return deriveEffects(res.input);
   }
 
   const credit4 = (code: string | Uint8Array) =>
@@ -158,7 +230,7 @@ describe("hostile operations", () => {
     bytes.set(code, at);
     const res = decodeForAnalysis(btoa(String.fromCharCode(...bytes)), Networks.TESTNET);
     if (res.ok) {
-      expect(deriveBalanceEffects(res.input).uncovered).toEqual([{ index: 0, reason: "invalid_operation" }]);
+      expect(deriveEffects(res.input).uncovered).toEqual([{ index: 0, reason: "invalid_operation" }]);
     } else {
       expect(res.reason).toBe("decode_failed");
     }
