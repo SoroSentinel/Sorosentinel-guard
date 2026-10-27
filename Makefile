@@ -3,7 +3,7 @@
 
 PNPM ?= pnpm
 
-.PHONY: deps fmt lint test test-contract gen fixtures-check verify
+.PHONY: deps fmt lint test test-contract gen fixtures-check replay verify
 
 deps:
 	$(PNPM) install --frozen-lockfile
@@ -30,5 +30,11 @@ gen:
 fixtures-check: gen
 	git diff --exit-code -- fixtures
 	@test -z "$$(git ls-files --others --exclude-standard -- fixtures)" || { echo "untracked fixtures:"; git ls-files --others --exclude-standard -- fixtures; exit 1; }
+
+# Experiment E2: make replay FILE=txs.jsonl [MAX_RATE=0.02]. Prints aggregates only.
+MAX_RATE ?= 0.02
+replay:
+	@test -n "$(FILE)" || { echo "usage: make replay FILE=<txs.jsonl> [MAX_RATE=0.02]"; exit 2; }
+	cd packages/core && node scripts/replay.ts "$(abspath $(FILE))" --max-unanalyzable-rate $(MAX_RATE)
 
 verify: lint test test-contract fixtures-check

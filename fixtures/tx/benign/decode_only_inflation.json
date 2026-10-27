@@ -1,0 +1,24 @@
+{
+  "name": "decode_only_inflation",
+  "description": "Inflation (disabled on the network since protocol 12)",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAACQAAAAAAAAABtA9vXAAAAECssNFv3FVJbeSJqUSnSmubNTo0/SPLu051SaKDHHNReeyEfyUDAueyY+YpTSck8sduSJnYO7391OmbsbXg0A4G",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "inflation",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "37733f315427fe7dd5bf91c5a17de1c84cf7405519d478c335bf5530883aed56"
+  }
+}

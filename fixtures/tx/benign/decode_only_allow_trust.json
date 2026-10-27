@@ -1,0 +1,24 @@
+{
+  "name": "decode_only_allow_trust",
+  "description": "Issuer authorizes a trustline (deprecated op)",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAABwAAAACBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAFVU0RDAAAAAQAAAAAAAAABtA9vXAAAAEBVTrr4aNlXTMdSOlX55//zyJa2QeQu0NEKFTW4lj1pNC4/rVOcO+3aJJ4MqKBmk0cKJqJ0UWHtP7HsP0L+PCQD",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "allowTrust",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "06fb22cfbbf6a2caa769098d5b7cab9a508fc61925f35e7acf9cdc37c4aaf84f"
+  }
+}

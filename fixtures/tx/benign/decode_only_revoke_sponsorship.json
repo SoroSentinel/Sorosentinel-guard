@@ -1,0 +1,24 @@
+{
+  "name": "decode_only_revoke_sponsorship",
+  "description": "Revoke sponsorship of an account entry",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAAEgAAAAAAAAAAAAAAAIE5dw6ofRdfVqNUZsNMfszLjYqRtO43ol32D1uPybOUAAAAAAAAAAG0D29cAAAAQO93KycpcxEoOI43N9WLoY3dlFWg/BDelIouEkkV4BH7iCRjHjzraLPLWAL7FLXzR4l1jLqm/6DfMEvNMzAOiAE=",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "revokeSponsorship",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "a0c48fcaa804e4aa3807a5d415fe9763d453b05e26b601f25a0d3ead9aff1cb0"
+  }
+}

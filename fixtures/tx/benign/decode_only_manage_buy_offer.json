@@ -1,0 +1,24 @@
+{
+  "name": "decode_only_manage_buy_offer",
+  "description": "Buy offer on the DEX",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAADAAAAAAAAAABVVNEQwAAAADtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30QAAAAAC+vCAAAAAAQAAAAIAAAAAAAAAAAAAAAAAAAABtA9vXAAAAEA4dt3lJq9IfG8P1RQcf2FlK/Ku/Zc+HuTkDmlwCGHCtG4J4ymGQnzSR1b+M6uZ+UCIuOtQ5XX+ddfDTh1bDdQF",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "manageBuyOffer",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "779cd2e1d152d58af799020eb5e0895571831c95d5ea2f1837529fddba47b346"
+  }
+}

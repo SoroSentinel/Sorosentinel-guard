@@ -1,0 +1,24 @@
+{
+  "name": "decode_only_create_passive_sell_offer",
+  "description": "Passive sell offer",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAABAAAAAFVU0RDAAAAAO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRAAAAAAAAAAAF9eEAAAAAAgAAAAEAAAAAAAAAAbQPb1wAAABAVgeTDA98/T5bAESJyeh2uRFH8xTGUHm0EEFPAFu7Ta0d8kHi8BXCuPWfGJSSiVdzsWYlWfyKRtUpXnxsTNFoCg==",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "createPassiveSellOffer",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "f905bbe2051f6097bd31e2ffac478dd7dbc609923cf7822857442c3a4f38a568"
+  }
+}

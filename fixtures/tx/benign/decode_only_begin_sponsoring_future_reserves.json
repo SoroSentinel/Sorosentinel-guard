@@ -1,0 +1,24 @@
+{
+  "name": "decode_only_begin_sponsoring_future_reserves",
+  "description": "Start sponsoring another account's reserves",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAAEAAAAACBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAAAAAABtA9vXAAAAEBsp1mHKyFsVTBXaWK8UqLfBTQzhqcrbZwsRaU2uPF9vxxv4zd7LLwvfBSY5Xq7IP7QgheN6Wnuwz+8oPLfv+MH",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "beginSponsoringFutureReserves",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "db80993b4c009e4120e10fe20baab5a3b04fb264124b47246b3cb2bae8e2957b"
+  }
+}

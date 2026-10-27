@@ -10,7 +10,10 @@ import {
   Asset,
   Contract,
   Keypair,
+  Address,
+  Claimant,
   Memo,
+  xdr,
   MuxedAccount,
   Networks,
   Operation,
@@ -45,6 +48,8 @@ interface Expected {
   time_bounds: { min: string; max: string } | null;
   memo_type: string;
   operations: { type: string; source: string; has_own_source: boolean }[];
+  /** Auth entries of the (single) invokeHostFunction operation, when present. */
+  auth?: { credential: string; signatureExpirationLedger?: number }[];
 }
 
 type Built = Transaction | FeeBumpTransaction;
@@ -141,6 +146,63 @@ write("benign", "manage_data_decode_only", "Decode-only operation (no v1 effects
 write("benign", "memo_id", "Payment with an ID memo", P,
   signed(builder(P).addMemo(Memo.id("42")).addOperation(Operation.payment({ destination: other.publicKey(), asset: Asset.native(), amount: "1" })).build(), signer),
   v1("public", one("payment"), { memo_type: "id" }));
+
+// ---- benign: one per decode-only operation (no v1 effects) ----
+{
+  const balanceId = "00000000" + "11".repeat(32);
+  const poolId = "22".repeat(32);
+  const decodeOnly: [string, string, xdr.Operation][] = [
+    ["manageSellOffer", "Sell offer on the DEX", Operation.manageSellOffer({ selling: Asset.native(), buying: usdc, amount: "10", price: "0.5" })],
+    ["createPassiveSellOffer", "Passive sell offer", Operation.createPassiveSellOffer({ selling: usdc, buying: Asset.native(), amount: "10", price: "2" })],
+    ["allowTrust", "Issuer authorizes a trustline (deprecated op)", Operation.allowTrust({ trustor: other.publicKey(), assetCode: "USDC", authorize: true })],
+    ["inflation", "Inflation (disabled on the network since protocol 12)", Operation.inflation({})],
+    ["bumpSequence", "Bump the sequence number", Operation.bumpSequence({ bumpTo: "123456800" })],
+    ["manageBuyOffer", "Buy offer on the DEX", Operation.manageBuyOffer({ selling: Asset.native(), buying: usdc, buyAmount: "5", price: "0.5" })],
+    ["createClaimableBalance", "Create a claimable balance", Operation.createClaimableBalance({ asset: Asset.native(), amount: "3", claimants: [new Claimant(other.publicKey())] })],
+    ["claimClaimableBalance", "Claim a claimable balance", Operation.claimClaimableBalance({ balanceId })],
+    ["beginSponsoringFutureReserves", "Start sponsoring another account's reserves", Operation.beginSponsoringFutureReserves({ sponsoredId: other.publicKey() })],
+    ["endSponsoringFutureReserves", "End a sponsorship block", Operation.endSponsoringFutureReserves({})],
+    ["revokeSponsorship", "Revoke sponsorship of an account entry", Operation.revokeAccountSponsorship({ account: other.publicKey() })],
+    ["clawback", "Issuer claws back an asset", Operation.clawback({ asset: usdc, amount: "1", from: other.publicKey() })],
+    ["clawbackClaimableBalance", "Issuer claws back a claimable balance", Operation.clawbackClaimableBalance({ balanceId })],
+    ["setTrustLineFlags", "Issuer changes trustline flags", Operation.setTrustLineFlags({ trustor: other.publicKey(), asset: usdc, flags: { authorized: true } })],
+    ["liquidityPoolDeposit", "Deposit into a liquidity pool", Operation.liquidityPoolDeposit({ liquidityPoolId: poolId, maxAmountA: "10", maxAmountB: "10", minPrice: "0.9", maxPrice: "1.1" })],
+    ["liquidityPoolWithdraw", "Withdraw from a liquidity pool", Operation.liquidityPoolWithdraw({ liquidityPoolId: poolId, amount: "1", minAmountA: "0.5", minAmountB: "0.5" })],
+    ["extendFootprintTtl", "Extend Soroban state TTL", Operation.extendFootprintTtl({ extendTo: 100_000 })],
+    ["restoreFootprint", "Restore archived Soroban state", Operation.restoreFootprint({})],
+  ];
+  for (const [type, description, op] of decodeOnly) {
+    const snake = type.replace(/[A-Z]/g, (c) => "_" + c.toLowerCase());
+    write("benign", `decode_only_${snake}`, description, P, signed(builder(P).addOperation(op).build(), signer), v1("public", one(type)));
+  }
+}
+
+// ---- Soroban authorization entries ----
+{
+  const call = new Contract(contractId).call("transfer");
+  if (call.body.type !== "invokeHostFunction" || call.body.invokeHostFunctionOp.hostFunction.type !== "hostFunctionTypeInvokeContract") {
+    throw new Error("unexpected contract call shape");
+  }
+  const invocation = new xdr.SorobanAuthorizedInvocation({
+    function: xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(call.body.invokeHostFunctionOp.hostFunction.invokeContract),
+    subInvocations: [],
+  });
+  const addressCreds = (expiry: number) =>
+    new xdr.SorobanAddressCredentials({ address: new Address(other.publicKey()).toScAddress(), nonce: 7n, signatureExpirationLedger: expiry, signature: xdr.ScVal.scvVoid() });
+  const auth = [
+    new xdr.SorobanAuthorizationEntry({ credentials: xdr.SorobanCredentials.sorobanCredentialsSourceAccount(), rootInvocation: invocation }),
+    new xdr.SorobanAuthorizationEntry({ credentials: xdr.SorobanCredentials.sorobanCredentialsAddress(addressCreds(5_000_000)), rootInvocation: invocation }),
+  ];
+  const op = Operation.invokeHostFunction({ func: call.body.invokeHostFunctionOp.hostFunction, auth });
+  write("hostile", "auth_entries_address_credentials", "Contract call carrying source-account and address-credential auth entries (another account signs)", T,
+    signed(builder(T).addOperation(op).build(), signer),
+    v1("testnet", one("invokeHostFunction"), {
+      auth: [
+        { credential: "sorobanCredentialsSourceAccount" },
+        { credential: "sorobanCredentialsAddress", signatureExpirationLedger: 5_000_000 },
+      ],
+    }));
+}
 
 // ---- hostile / edge cases ----
 {
