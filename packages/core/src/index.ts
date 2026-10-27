@@ -6,3 +6,6 @@ export { decodeForAnalysis } from "./decode/envelope.ts";
 export type { AnalysisInput, AnalysisDecodeResult } from "./decode/envelope.ts";
 export { deriveEffects } from "./effects/derive.ts";
 export type * from "./effects/types.ts";
+export { analyze } from "./analyze.ts";
+export type { AnalysisResult, AnalysisStatus, AnalyzeContext, NotChecked } from "./analyze.ts";
+export type { Finding, FindingCode, Severity } from "./rules/types.ts";
