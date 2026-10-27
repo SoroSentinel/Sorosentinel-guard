@@ -59,7 +59,7 @@ export function decodeOperation(op: xdr.Operation, index: number, txSource: Acco
   return decoded;
 }
 
-function authSummary(entry: xdr.SorobanAuthorizationEntry): AuthEntrySummary {
+export function authSummary(entry: xdr.SorobanAuthorizationEntry): AuthEntrySummary {
   const cred = entry.credentials;
   switch (cred.type) {
     case "sorobanCredentialsSourceAccount":
