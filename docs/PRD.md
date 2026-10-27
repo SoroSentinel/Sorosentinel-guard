@@ -291,3 +291,41 @@ The 11 technical cuts are in `ARCHITECTURE.md` §17 HQ3. Product-level:
 | PO5 | **Scan as a product** | See ARCH OE14 | Library/CLI feeding Intel; defer the rest until E3 | **Open decision** |
 
 **Decisions:** (1) Phase 1 slice = Guard effect analysis + minimal Intel: **accepted** (ADR 0002). (2) Defer Scan beyond the minimal library until E3 shows signal: **still open**.
+
+---
+
+## 15. Repo Guard (planned; parked until the Phase 1 exit test passes)
+
+Added 2026-10-27 by the project owner. Decision record: ADR 0003. **Do not build before the Phase 1 exit criterion in §9 is met.**
+
+### 15.1 Problem
+People sign transactions built by Stellar projects: wallets, dApps, deploy scripts. A contributor or collaborator can change what those projects do in ways reviewers miss: swap a payment destination or contract ID, commit a contract binary that does not match its source, add a dependency that runs code at install time, or edit CI so it leaks secrets. Generic tools catch some of this for any language; none look for the Stellar-specific versions.
+
+### 15.2 What it is
+A GitHub Action that runs on pull requests in Stellar and Soroban projects and reports risky changes in the diff. It **advises**: it posts findings as check annotations and a summary, and blocks merging only if the maintainer makes the check required.
+
+| ID | Requirement | Pri |
+|---|---|---|
+| R-1 | **WASM provenance:** flag a committed or released `.wasm` whose SHA-256 differs from a reproducible build of the source in the same commit, and any new or changed `.wasm` with no buildable source. Reuses Scan's parser for indicators on changed contracts. TODO(verify): Soroban build reproducibility and the pinned toolchain it needs. | P0 |
+| R-2 | **Secrets:** flag Stellar secret seeds (`S…` strkeys with a valid checksum) and BIP-39-style recovery phrases added in the diff. Never print the secret; report file and line only. | P0 |
+| R-3 | **Install-time code:** flag new or changed dependencies that run code at install or build time (npm `preinstall`/`install`/`postinstall`, new Cargo crates with `build.rs`), and lockfile changes that switch a package's source. | P0 |
+| R-4 | **Changed addresses and IDs:** flag added, removed or changed `G…`, `M…` and `C…` strkeys and network passphrases, with extra weight in deploy scripts, configuration and frontend constants. | P0 |
+| R-5 | **Workflow changes:** flag edits under `.github/workflows/`, especially `pull_request_target`, new secret use, and actions not pinned to a commit SHA. | P0 |
+| R-6 | **Output:** severity-ordered findings with file and line, built only from approved templates (§5.1). Never says "safe"; a clean run says no issues were found and lists what was not checked. | P0 |
+| R-7 | **Fail loud:** any error, timeout or unsupported input yields "could not analyze", never a passing result. | P0 |
+| R-8 | Optional Intel lookup of changed addresses and contract IDs against the signed snapshot. | P1 |
+
+### 15.3 Non-goals
+- General malware or virus detection, signature scanning, or scanning non-Stellar projects (NG1 still holds).
+- Executing code from the pull request with access to secrets. The reproducible build in R-1 runs sandboxed, with no network and no secrets.
+- Scanning full repository history, or replacing GitHub secret scanning, Dependabot or code review.
+- Judging contributors. Findings describe **what the change does** (§5.1 L2), never who made it or why.
+
+### 15.4 Risks
+- **False positives:** legitimate releases change addresses and workflows. Mitigation: per-rule severity, allowlists in a reviewed config file, and informational-only rules.
+- **Reproducible builds may not be reproducible** across toolchains; R-1 depends on verifying this first.
+- **The Action itself is an attack surface** (`pull_request_target` misuse). It must run with a read-only token on untrusted PRs.
+- **Crowded space:** the value is only the Stellar-specific rules; generic checks stay in existing tools.
+
+### 15.5 Success metrics
+Pilot repos installed; findings confirmed by maintainers vs. dismissed (dismiss rate per rule); zero leaked secrets in Action output.

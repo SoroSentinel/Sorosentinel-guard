@@ -151,4 +151,6 @@ E1 wallet-team conversations · E2 replay ≥10k historical txs through decoder 
 
 **Kept (don't cut):** fail-closed renderer + blocklist lint, immutable evidence + statement history, lazy entity creation, `as_of`, WASM-parse sandbox, cross-repo contract tests, effect-first Guard, simple signed snapshot, append-only `verdict_events`.
 
+**Parked (ADR 0003):** Repo Guard (PRD §15), a Stellar-specific GitHub Action for risky PR changes. Not before the Phase 1 exit test passes.
+
 **Decisions:** (1) Phase 1 slice = Guard effect analysis + minimal Intel: **accepted** (ADR 0002). (2) Defer Scan beyond minimal library until E3 shows signal: **still open**. Repo/language split (3 repos) is kept per your decision.
