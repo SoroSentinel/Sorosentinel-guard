@@ -1,0 +1,25 @@
+{
+  "name": "fee_bump",
+  "description": "Fee bump: outer fee payer differs from inner source",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAABQAAAADKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAAAAAGQAAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAAAQAAAACBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAAAAAAAAJiWgAAAAAAAAAABtA9vXAAAAEB/BTSgZMrJnT+HDx5dITMYrnkohLS8AAaQxdDl500ov/k8YEEWgd2ZeYoxf2IWEkr/8qzPeJNxVC8nBfcjtnACAAAAAAAAAAHb2r58AAAAQO+2HgrgORmpXJGYYD5GC1mDUcbkkvE/NLdbIMvSvE4bhUnMsYOo0AJEKz2yOvTTf7Sv2/bQatHgHXfKANuRdAs=",
+  "expected": {
+    "envelope": "fee_bump",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "payment",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "fee_source": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+    "tx_hash": "0cbdf0dc6ac1b06c17b28690ab446b5405a077a8e4c88da4f224ff843bc505ee"
+  }
+}

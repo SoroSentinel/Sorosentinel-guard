@@ -1,0 +1,6 @@
+packages:
+  - packages/*
+
+# AGENTS.md §6: avoid packages published in the last 14 days (value in minutes).
+# Applies to transitive dependencies too.
+minimumReleaseAge: 20160

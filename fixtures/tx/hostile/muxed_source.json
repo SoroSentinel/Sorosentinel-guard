@@ -1,0 +1,25 @@
+{
+  "name": "muxed_source",
+  "description": "Transaction source is a muxed M... account",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAQAAAAAAAAAE0oqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAZAAAAAAHW80WAAAAAQAAAABq3+mAAAAAAGrf6qwAAAAAAAAAAQAAAAAAAAABAAAAAIE5dw6ofRdfVqNUZsNMfszLjYqRtO43ol32D1uPybOUAAAAAAAAAAAAmJaAAAAAAAAAAAG0D29cAAAAQKoTtrX5Qf8olef0UIb9AD/A9ZPwK8IGgcYjGz7JojQp0ieMFbHMwllLmFqn2cEZgfyMD2EOz5vPNCV6CrCNegc=",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "payment",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "source_muxed_id": "1234",
+    "tx_hash": "d04c2c8c9305f6f12a56c475c8b2073267679a10159c6467a79f2d79ef0177ad"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "hashx_signer",
+  "description": "SetOptions adds a hash(x) signer (no visible owner key)",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAIJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQAAAAEAAAAAAAAAAbQPb1wAAABA11aDbUT0Csbg266PTIsJCJtbdNlQ577pp7ihV45P8TPDbQ9ftJu/wxmqWR0X/f0wASKwSYe1gyPeFKUfVVp7AQ==",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "setOptions",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "e785adde762d0d03a687fdc36e6fccc452f19f01871f5e81c7db79a0f9bc0d60"
+  }
+}

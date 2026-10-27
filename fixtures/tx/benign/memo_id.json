@@ -1,0 +1,24 @@
+{
+  "name": "memo_id",
+  "description": "Payment with an ID memo",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAgAAAAAAAAAqAAAAAQAAAAAAAAABAAAAAIE5dw6ofRdfVqNUZsNMfszLjYqRtO43ol32D1uPybOUAAAAAAAAAAAAmJaAAAAAAAAAAAG0D29cAAAAQF5JoqHcN+Bwte/pUQcD9ak0EVozCdAk69U9OrqGFr8G7oeCih0OskfzwYVZPYGVrjT1hQ3c4N7yfzjXtyzUigE=",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "id",
+    "operations": [
+      {
+        "type": "payment",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "83cd04517bf4e8ad6fcf42794dea02a528afcb5375ad02a490e30d4cf344c2bc"
+  }
+}

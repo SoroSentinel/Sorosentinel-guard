@@ -1,0 +1,24 @@
+{
+  "name": "path_payment_strict_send",
+  "description": "Path payment with a destination minimum",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAADQAAAAFVU0RDAAAAAO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRAAAAAAX14QAAAAAAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5QAAAAAAAAAAB3NZQAAAAAAAAAAAAAAAAG0D29cAAAAQCjCnL+Zb4/1BLE++dVcAU24PGu7onecnG8DS91mhntb+qtO8int4QpaMmVD8xw3y5c6PHiOgEDZKO0SXxKdPw8=",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "pathPaymentStrictSend",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "d2244e020d3e7cbe09b1d84f4c36d4ad62b60bb06364d9e48180f4ad33701991"
+  }
+}

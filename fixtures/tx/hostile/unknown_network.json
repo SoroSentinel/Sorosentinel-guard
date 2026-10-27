@@ -1,0 +1,24 @@
+{
+  "name": "unknown_network",
+  "description": "Signed for a passphrase with no Intel coverage",
+  "network_passphrase": "Standalone Network ; February 2017",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAAAQAAAACBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAAAAAAAAJiWgAAAAAAAAAABtA9vXAAAAEAfCzwiQV7RNDM3BhBWCx3AHyn+jvI/6yLzkemv3zLHOC66RWymPszew1ahcWFWWClew5sgbgamuxoXiR3/k1wD",
+  "expected": {
+    "envelope": "tx",
+    "network": "unknown",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "payment",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "5e062b2dfd28a405b5a8f10413e957d49948d79bcb9fdab1fa91aba77ae787fc"
+  }
+}

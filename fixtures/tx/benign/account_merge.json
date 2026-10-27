@@ -1,0 +1,24 @@
+{
+  "name": "account_merge",
+  "description": "Merge the account into another",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAACAAAAACBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAAAAAABtA9vXAAAAEA8UBpdog8OiQrdGhkhs7kbsIq9mZCkMC23WFhh1GiG8UdgS+6Grqf2aH6S5dDNcrZtMBXHr1eVOshYYYnneMEB",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "accountMerge",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "8cb2adca2baee9473a94e816b211516511c702e0e4a75f0f9069f78809220026"
+  }
+}

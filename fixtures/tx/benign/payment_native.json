@@ -1,0 +1,24 @@
+{
+  "name": "payment_native",
+  "description": "Native XLM payment",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAAAQAAAACBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAAAAAAAB3NZQAAAAAAAAAABtA9vXAAAAEC7Xj0KzEq/JEwptCogtxFJ95CpD3jJGNqYxDwKpCVvz66i5VxULIuuM1NCC9hFN+i69RkhLujOG6swn2vUOuwM",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "payment",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "42bff2cfc67ab9e8ea99e519b111e474a4d0a51b9b7746c9105e74fa13fec5f2"
+  }
+}

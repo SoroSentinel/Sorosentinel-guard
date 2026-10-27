@@ -1,0 +1,9 @@
+{
+  "name": "truncated_xdr",
+  "description": "Valid envelope truncated mid-operation",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qs",
+  "expected": {
+    "unanalyzable": "decode_failed"
+  }
+}
