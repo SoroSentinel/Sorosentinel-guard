@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sorosentinel:schema:v1:AnalysisResult",
+  "title": "AnalysisResult",
+  "description": "Guard output. There is no `safe` status. Findings are severity-ordered and never truncated.",
+  "type": "object",
+  "required": ["status", "network", "operation_count", "effects", "findings", "not_checked"],
+  "additionalProperties": false,
+  "properties": {
+    "status": { "enum": ["findings_present", "no_issues_found", "partial", "unanalyzable"] },
+    "tx_hash": {
+      "description": "Hash of exactly the bytes being signed. Absent only when the input could not be parsed.",
+      "$ref": "urn:sorosentinel:schema:v1:common#/$defs/sha256Hex"
+    },
+    "network": {
+      "description": "`unknown` when the passphrase has no Intel coverage; status is then at best `partial`.",
+      "enum": ["public", "testnet", "unknown"]
+    },
+    "operation_count": { "type": "integer", "minimum": 0 },
+    "effects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["account", "asset", "delta_min", "delta_max", "assurance"],
+        "additionalProperties": false,
+        "properties": {
+          "account": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/canonicalKey" },
+          "asset": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/canonicalKey" },
+          "delta_min": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/stroops" },
+          "delta_max": {
+            "description": "Best case in stroops, or null when there is no upper bound (e.g. the receiver of a strict-send path payment). delta_min is the worst case and is shown first.",
+            "oneOf": [
+              { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/stroops" },
+              { "type": "null" }
+            ]
+          },
+          "assurance": { "enum": ["ledger", "contract_reported"] }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "urn:sorosentinel:schema:v1:Finding" }
+    },
+    "not_checked": {
+      "description": "Codes for what was not checked. Always present and non-empty, including for no_issues_found.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^NC-[A-Z0-9-]+$" }
+    }
+  }
+}

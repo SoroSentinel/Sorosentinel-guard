@@ -1,16 +1,25 @@
 import type { AnalysisInput } from "../decode/envelope.ts";
 import type { EffectsResult } from "../effects/types.ts";
+import type { CounterpartyHit } from "../intel/lookup.ts";
 
 /** Inputs a rule may read besides the transaction. Rules never read the clock or the network. */
 export interface RuleContext {
   /** Caller-supplied reference time (Unix seconds). Absent means time-relative checks are skipped. */
   asOf?: bigint;
+  /** Entities found in a verified Intel snapshot. Absent when no snapshot was used. */
+  hits?: CounterpartyHit[];
 }
 
 export type Severity = "critical" | "high" | "medium" | "low" | "info";
 
 /** Finding codes implemented so far (ARCHITECTURE §5.2). */
-export type FindingCode = "G-ACCOUNT-CONTROL" | "G-NETWORK-UNKNOWN" | "G-NO-EXPIRY" | "G-SIGNER-ADDED";
+export type FindingCode =
+  | "G-ACCOUNT-CONTROL"
+  | "G-DEST-FLAGGED"
+  | "G-NETWORK-UNKNOWN"
+  | "G-NO-EXPIRY"
+  | "G-SIGNER-ADDED"
+  | "G-TRUST-FLAGGED";
 
 /**
  * A finding carries structured facts only. `statement` stays null until the

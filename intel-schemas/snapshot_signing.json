@@ -1,0 +1,28 @@
+{
+  "spec": "schemas/snapshot-signing.md",
+  "version": "1",
+  "note": "TEST KEY ONLY: Ed25519 seed is 32 bytes of 0x07. payload_sha256 was recomputed independently from the spec in Python.",
+  "seed_hex": "0707070707070707070707070707070707070707070707070707070707070707",
+  "public_key_hex": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+  "input_entities": [
+    { "type": "asset", "key": "USDC:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" },
+    { "type": "account", "key": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" },
+    { "type": "domain", "key": "Example.COM." },
+    { "type": "account", "key": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" }
+  ],
+  "payload_sha256": "859ef491d8749290ca60b39c96f22b0e83bac3a7caf12ace481cffaf79061804",
+  "snapshot": {
+    "format_version": 1,
+    "network": "public",
+    "version": 1,
+    "generated_at": "2026-10-27T00:00:00Z",
+    "ruleset_version": "2026.10.1",
+    "key_id": "test-key-1",
+    "entries": [
+      "8b079656a7f799dc45e331128db881e2",
+      "903f37f7e120ad8239233975d61e138e",
+      "a9220333b6ea46d81dd28746b9024e23"
+    ],
+    "signature": "eW/dmKcJLVGa2pH/0FrUrAQTJv0M8pnO2z+52ALCX0J3KzOvcsfGdfNSELoiPOMxUQhirs9seK5VTjyycMGrBA=="
+  }
+}

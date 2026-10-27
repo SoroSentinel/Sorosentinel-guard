@@ -2,11 +2,14 @@ import { decodeForAnalysis } from "./decode/envelope.ts";
 import type { Network, UnanalyzableReason } from "./decode/types.ts";
 import { deriveEffects } from "./effects/derive.ts";
 import type { AccountEffect, BalanceEffect } from "./effects/types.ts";
+import { collectEntities, lookup, type CounterpartyHit } from "./intel/lookup.ts";
+import { checkSnapshot, type SnapshotRejection } from "./intel/snapshot.ts";
 import { accountControl } from "./rules/account-control.ts";
+import { counterpartyFlagged } from "./rules/counterparty-flagged.ts";
 import { networkUnknown } from "./rules/network-unknown.ts";
 import { noExpiry } from "./rules/no-expiry.ts";
 import { signerAdded } from "./rules/signer-added.ts";
-import { orderFindings, type Finding, type Rule } from "./rules/types.ts";
+import { orderFindings, type Finding, type Rule, type RuleContext } from "./rules/types.ts";
 
 export type AnalysisStatus = "findings_present" | "no_issues_found" | "partial" | "unanalyzable";
 
@@ -33,7 +36,24 @@ export interface AnalyzeContext {
    * Supplied by the caller so results are reproducible; Guard never reads the clock.
    */
   asOf?: Date;
+  /**
+   * Intel's signed snapshot, already parsed from JSON, plus the public keys
+   * pinned in the integrator's build. Used only when it verifies, matches the
+   * network, and is fresh relative to `asOf`.
+   */
+  snapshot?: {
+    data: unknown;
+    pinnedKeys: Readonly<Record<string, Uint8Array>>;
+    maxAgeSeconds?: number;
+  };
 }
+
+/**
+ * Whether counterparties were checked against the snapshot. Any value other
+ * than `verified` means they were not, and the result carries
+ * NC-COUNTERPARTY-SIGNALS. `stale` is the "protection data stale" state.
+ */
+export type SnapshotStatus = "verified" | "not_provided" | "no_as_of" | "not_applicable" | SnapshotRejection;
 
 export interface AnalysisResult {
   status: AnalysisStatus;
@@ -46,11 +66,12 @@ export interface AnalysisResult {
   /** Most severe first; never truncated. */
   findings: Finding[];
   notChecked: NotChecked[];
+  snapshotStatus: SnapshotStatus;
   /** Present when status is `unanalyzable`. */
   unanalyzableReason?: UnanalyzableReason;
 }
 
-const RULES: readonly Rule[] = [accountControl, networkUnknown, noExpiry, signerAdded];
+const RULES: readonly Rule[] = [accountControl, counterpartyFlagged, networkUnknown, noExpiry, signerAdded];
 
 /**
  * Analyzes a base64 transaction envelope before signing. Never throws and
@@ -68,23 +89,56 @@ export function analyze(envelopeBase64: string, ctx: AnalyzeContext): AnalysisRe
       accountEffects: [],
       findings: [],
       notChecked: ["NC-DECODE"],
+      snapshotStatus: "not_applicable",
       unanalyzableReason: decoded.reason,
     };
   }
 
   const { input } = decoded;
   const effects = deriveEffects(input);
-  const findings = orderFindings(RULES.flatMap((rule) => rule(input, effects, ruleContext(ctx))));
+  const rc = ruleContext(ctx);
 
-  const notChecked = new Set<NotChecked>(["NC-EXECUTION-TIME", "NC-COUNTERPARTY-SIGNALS"]);
+  // Counterparty lookup: only against a snapshot that verifies, matches the
+  // network and is fresh. Everything else leaves counterparties unchecked.
+  let snapshotStatus: SnapshotStatus = "not_provided";
+  let counterpartiesChecked = false;
+  const network = input.tx.network;
+  if (ctx.snapshot !== undefined) {
+    if (network === "unknown") {
+      snapshotStatus = "not_applicable";
+    } else if (ctx.asOf === undefined || !Number.isFinite(ctx.asOf.getTime())) {
+      snapshotStatus = "no_as_of";
+    } else {
+      const check = checkSnapshot(ctx.snapshot.data, {
+        pinnedKeys: ctx.snapshot.pinnedKeys,
+        network,
+        asOf: ctx.asOf,
+        ...(ctx.snapshot.maxAgeSeconds === undefined ? {} : { maxAgeSeconds: ctx.snapshot.maxAgeSeconds }),
+      });
+      if (!check.ok) {
+        snapshotStatus = check.reason;
+      } else {
+        snapshotStatus = "verified";
+        const entities = collectEntities(input, effects);
+        const { hits, unresolved } = lookup(entities, network, check.entries);
+        rc.hits = hits;
+        counterpartiesChecked = !entities.contractsUnchecked && unresolved === 0;
+      }
+    }
+  }
+
+  const findings = orderFindings(RULES.flatMap((rule) => rule(input, effects, rc)));
+
+  const notChecked = new Set<NotChecked>(["NC-EXECUTION-TIME"]);
+  if (!counterpartiesChecked) notChecked.add("NC-COUNTERPARTY-SIGNALS");
   if (effects.uncovered.length > 0) notChecked.add("NC-OPERATION-EFFECTS");
   if (input.tx.operations.some((op) => op.type === "invokeHostFunction")) notChecked.add("NC-SIMULATION");
   if (input.tx.network === "unknown") notChecked.add("NC-NETWORK-COVERAGE");
 
   // Only a complete check may report `findings_present` or `no_issues_found`.
   // NC-EXECUTION-TIME is inherent to pre-signing analysis; any other gap (and
-  // any code added later) makes the result `partial`. Counterparty lookup is not
-  // implemented yet, so today every decodable transaction is `partial`.
+  // any code added later) makes the result `partial`. Without a verified
+  // snapshot, counterparties are unchecked, so the result is `partial`.
   const complete = [...notChecked].every((c) => c === "NC-EXECUTION-TIME");
   const status: AnalysisStatus = !complete ? "partial" : findings.length > 0 ? "findings_present" : "no_issues_found";
 
@@ -97,10 +151,13 @@ export function analyze(envelopeBase64: string, ctx: AnalyzeContext): AnalysisRe
     accountEffects: effects.accountEffects,
     findings,
     notChecked: [...notChecked].sort(),
+    snapshotStatus,
   };
 }
 
-function ruleContext(ctx: AnalyzeContext) {
+function ruleContext(ctx: AnalyzeContext): RuleContext {
   const ms = ctx.asOf?.getTime();
   return ms === undefined || !Number.isFinite(ms) ? {} : { asOf: BigInt(Math.floor(ms / 1000)) };
 }
+
+export type { CounterpartyHit };
