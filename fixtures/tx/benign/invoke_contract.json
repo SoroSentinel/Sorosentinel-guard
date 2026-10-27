@@ -1,0 +1,24 @@
+{
+  "name": "invoke_contract",
+  "description": "Invoke a contract function (no auth entries)",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAAGAAAAAAAAAABBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcAAAAFaGVsbG8AAAAAAAAAAAAAAAAAAAAAAAABtA9vXAAAAECKQCSfDvems7KnojsHp1RuR4XVBRioE6sYwRLg4K+peuRkwOqftiiU3oUetRPCfnZFywcMIfgdwnlyKJAlKv0F",
+  "expected": {
+    "envelope": "tx",
+    "network": "testnet",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "invokeHostFunction",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "8179c79a4fd6637390ad1c6baadaa37264fe681ac9c428051e7cc2ce50d18567"
+  }
+}

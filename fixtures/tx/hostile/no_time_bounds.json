@@ -1,0 +1,24 @@
+{
+  "name": "no_time_bounds",
+  "description": "No upper time bound: valid until its sequence number is used",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAQAAAACBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAAAAAAAAJiWgAAAAAAAAAABtA9vXAAAAEB7USVCSFUdlzPO/54kHpUXhwfLn1TePQeeUdZM00hJk2hNklMv67PtmfSB2wfUiq1n0CcCLtsMBzBd9Sm1k3kD",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "0",
+      "max": "0"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "payment",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "21516a8ce22c0032e0a3a65f8bbbfd8ab5c0cb9496e2cd379a0cc5d212c236f4"
+  }
+}

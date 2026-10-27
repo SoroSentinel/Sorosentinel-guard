@@ -1,0 +1,24 @@
+{
+  "name": "change_trust",
+  "description": "Add a trustline",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAABgAAAAFVU0RDAAAAAO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRf/////////8AAAAAAAAAAbQPb1wAAABAvMu1/D2xjV3t0M0LrzMmoJKpv9UBTLhyDV3YjWISiBj0BvKhSHn3X0FB/FxdrzxtxmLxSP9xbWOn8oJ5rMtkCg==",
+  "expected": {
+    "envelope": "tx",
+    "network": "testnet",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "changeTrust",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "f6a7c14a4901ad04ab4a6678c892cf0efc20361aa3b0f918c7f45f55d3561259"
+  }
+}
