@@ -22,6 +22,7 @@ interface Fixture {
         time_bounds: { min: string; max: string } | null;
         memo_type: string;
         operations: { type: string; source: string; has_own_source: boolean }[];
+        auth?: { credential: string; signatureExpirationLedger?: number }[];
       };
 }
 
@@ -57,6 +58,13 @@ describe("fixtures", () => {
     expect(tx.memo.type).toBe(exp.memo_type);
     expect(tx.operations.map((o) => ({ type: o.type, source: o.source.account, has_own_source: o.hasOwnSource }))).toEqual(exp.operations);
     tx.operations.forEach((o, i) => expect(o.index).toBe(i));
+    for (const o of tx.operations) {
+      // Only contract invocations carry auth entries.
+      expect(o.auth !== undefined).toBe(o.type === "invokeHostFunction");
+    }
+    if (exp.auth) {
+      expect(tx.operations.find((o) => o.type === "invokeHostFunction")?.auth).toEqual(exp.auth);
+    }
   });
 });
 
@@ -123,10 +131,14 @@ describe("operation support", () => {
     );
   });
 
-  it("every effects operation has a benign fixture", () => {
-    const covered = new Set(load("benign").flatMap((f) => ("operations" in f.expected ? f.expected.operations.map((o) => o.type) : [])));
-    const missing = types.filter((t) => operationSupport(t) === "effects" && !covered.has(t));
-    expect(missing).toEqual([]);
+  it("every operation type has a fixture (fails when a protocol adds one)", () => {
+    const covered = new Set(fixtures.flatMap((f) => ("operations" in f.expected ? f.expected.operations.map((o) => o.type) : [])));
+    expect(types.filter((t) => !covered.has(t))).toEqual([]);
+  });
+
+  it("covers both Soroban credential kinds used by v1 signing flows", () => {
+    const creds = new Set(fixtures.flatMap((f) => ("auth" in f.expected ? (f.expected.auth ?? []).map((a) => a.credential) : [])));
+    expect([...creds].sort()).toEqual(["sorobanCredentialsAddress", "sorobanCredentialsSourceAccount"]);
   });
 });
 

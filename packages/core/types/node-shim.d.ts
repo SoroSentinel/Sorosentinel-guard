@@ -7,3 +7,8 @@ declare module "node:fs" {
   export function writeFileSync(path: string | URL, data: string): void;
   export function mkdirSync(path: string | URL, options: { recursive: true }): void;
 }
+
+declare const process: {
+  readonly argv: string[];
+  exitCode: number | undefined;
+};

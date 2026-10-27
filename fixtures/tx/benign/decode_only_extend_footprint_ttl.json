@@ -1,0 +1,24 @@
+{
+  "name": "decode_only_extend_footprint_ttl",
+  "description": "Extend Soroban state TTL",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAAGQAAAAAAAYagAAAAAAAAAAG0D29cAAAAQMmuXTgqp7NvpRZYvx/gz0PS5fYvdkjX462azUvYFm796fGR/AsHdEwNVUpF37K1CPjwnaQ3buM40tco01J12A0=",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "extendFootprintTtl",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "081e1ed4d31d77bb394734c87b0bfc875db20c9c5ffc088be90aa9a39b2627a9"
+  }
+}

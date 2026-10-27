@@ -1,0 +1,24 @@
+{
+  "name": "decode_only_bump_sequence",
+  "description": "Bump the sequence number",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAACwAAAAAHW80gAAAAAAAAAAG0D29cAAAAQO0iIfVVIXvHpagWQbozH6hSlNpo8+SFYKOdH/b6De2UQIumJtkizOZJ3TVTMtCueXCcMvlwweOigLzmtR/W6gU=",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "bumpSequence",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "8606349bd5c989e1327bc780155d5ff8cdece4a48134ca3ba855add2aec456e4"
+  }
+}

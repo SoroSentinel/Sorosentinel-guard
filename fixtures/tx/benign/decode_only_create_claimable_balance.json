@@ -1,0 +1,24 @@
+{
+  "name": "decode_only_create_claimable_balance",
+  "description": "Create a claimable balance",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAADgAAAAAAAAAAAcnDgAAAAAEAAAAAAAAAAIE5dw6ofRdfVqNUZsNMfszLjYqRtO43ol32D1uPybOUAAAAAAAAAAAAAAABtA9vXAAAAEC3+9YbU2l1kPTMjippTtqG99qPd//4FxUpCCWkN3d+yMZa4elFH/xX3XPxMqU+Uk8QWW3CDEIDqufn8CoE5HUF",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "createClaimableBalance",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "ebc4441c9b189d8f7b309b8543359cfcce2a2c0b5e96b03dad008136ff98f42d"
+  }
+}
