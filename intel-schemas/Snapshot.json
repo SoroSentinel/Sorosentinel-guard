@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sorosentinel:schema:v1:Snapshot",
+  "title": "Snapshot",
+  "description": "v1 snapshot: full list of 128-bit entry hashes (schemas/canonical-key.md), sorted ascending, Ed25519-signed. No deltas, filters or confirm step (v1 cut list).",
+  "type": "object",
+  "required": ["format_version", "network", "version", "generated_at", "ruleset_version", "key_id", "entries", "signature"],
+  "additionalProperties": false,
+  "properties": {
+    "format_version": { "const": 1 },
+    "network": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/network" },
+    "version": { "type": "integer", "minimum": 1 },
+    "generated_at": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/timestamp" },
+    "ruleset_version": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/rulesetVersion" },
+    "key_id": { "type": "string", "pattern": "^[a-z0-9-]{1,64}$" },
+    "entries": {
+      "description": "Lowercase hex, sorted ascending, no duplicates (ordering is checked by tests, not expressible here).",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[0-9a-f]{32}$" }
+    },
+    "signature": {
+      "description": "Ed25519 signature over the payload defined in schemas/snapshot-signing.md, standard base64.",
+      "type": "string",
+      "contentEncoding": "base64"
+    }
+  }
+}
