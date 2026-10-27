@@ -34,13 +34,13 @@ If anything here conflicts with the full doc, the full doc wins; flag the confli
 ## 4. Intel
 - Ingest: Galexie lake backfill + RPC live tail; idempotent by `(network, ledger_seq)`; checkpoint table.
 - Entities: `account | asset | contract | wasm_hash | domain`.
-- Verdict levels: `benign | unknown | suspicious | malicious`; status: `proposed → active → disputed → active|revoked|expired`.
-- `score = f(evidence_set, as_of, ruleset_version)`; `as_of` is an input and is stored (never read the wall clock in scoring). Replay must reproduce stored verdicts.
+- Verdict levels: `benign | unknown | suspicious | malicious`; status (v1): `active | revoked` plus a `disputed` flag; review queue is separate.
+- Level = rule table over fired detectors, evidence classes and analyst confirmation, as a function of `(evidence_set, as_of, ruleset_version)` (v1: no numeric score). `as_of` is an input and is stored (never read the wall clock in verdict logic). Replay must reproduce stored verdicts.
 - Create entities lazily (on evidence / first lookup / watchlist). Normalize muxed `M…` → `G…`; link classic asset ↔ SAC via `entity_link`.
 - Informational Scan indicators (upgradeable, cross-call, creates contracts, old SDK) never raise a level alone.
 - Detectors v1: lookalike asset, home-domain mismatch, trustline spam, takeover pattern, scan evidence, community, curated.
-- Outputs: REST API (`/v1/entities/...`, `:batchGet`, `/v1/snapshots/...`) + Ed25519-signed snapshot (≤5 min cadence, KMS key, 2 key IDs).
-- Stack: Postgres 16, Redis, S3-compatible store, Postgres-backed queue (no Kafka).
+- Outputs: REST API (`/v1/entities/...`, `:batchGet`, `/v1/snapshots/...`) + Ed25519-signed snapshot (≤5 min cadence; v1: one KMS key plus one offline backup key pinned in the SDK; signed bytes in `schemas/snapshot-signing.md`).
+- Stack: Postgres 16, S3-compatible store, Postgres-backed queue (no Kafka). v1: no Redis; in-process cache, rate limits at the gateway.
 - Owns shared schemas in `schemas/` → published to npm / crates / Go.
 
 ## 5. Guard
@@ -50,7 +50,7 @@ If anything here conflicts with the full doc, the full doc wins; flag the confli
 - Privacy: snapshot-first, no telemetry by default.
 
 ## 6. Scan
-- Pipeline: fetch WASM → dedupe by sha256 + ruleset version → sandbox → parse → feature extraction → indicators → callback to Intel.
+- Pipeline (v1): Intel acquires the WASM, dedupes by sha256 + ruleset version, and runs the Scan CLI as a one-shot sandboxed job (no network) → parse → feature extraction → indicators → Intel reads the `ScanReport` JSON. No Scan service or callbacks.
 - v1 detectors are coarse indicators (upgradeable, creates contracts, cross-calls, missing auth import, SEP-41 deviation, known-bad hash, old SDK). Not proof of malice.
 - Binary/deployed WASM only. No source-level analysis (Scout/Certora cover it).
 

@@ -123,7 +123,7 @@ Priority: **P0** = required for v1 launch, **P1** = v1.x, **P2** = later.
 | I-1 | Ingest Stellar ledger data (live tail + historical backfill) for classic ops and Soroban events/deployments | P0 |
 | I-2 | Maintain entities: account, asset, contract, wasm_hash, domain | P0 |
 | I-3 | Heuristic detectors: lookalike asset codes, issuer/home-domain mismatch, clawback/revocable-flag issuers, trustline spam patterns, suspicious signer/threshold changes | P0 |
-| I-4 | Verdict engine with evidence, source trust weights, expiry/decay, and state machine (proposed → active → disputed → revoked) | P0 |
+| I-4 | Verdict engine with evidence: rule table over detectors, evidence classes and analyst confirmation, evidence expiry, `active`/`revoked` status plus a `disputed` flag (v1 cut list; trust weights and decay are deferred) | P0 |
 | I-5 | Read API: `GET /v1/entities/{type}/{id}` returning verdict + evidence summary | P0 |
 | I-6 | Signed snapshot (compact list of `suspicious`/`malicious` entities) published on a schedule for offline/local checks | P0 |
 | I-7 | Ingest Scan results as evidence | P0 |
