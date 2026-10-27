@@ -50,7 +50,7 @@ Items in the docs marked **verify** are *unverified facts*. Don't build on them 
 
 Numeric weight×trust×decay scoring · Redis · partitioned evidence table · Scan as an HTTP service/job table/callbacks · snapshot deltas, bloom/cuckoo filters, truncated-hash "confirm" step, key manifest · DB-held wording templates/locales · `entity_link` relations other than `sac_of` · report/dispute/webhook tables · distributed tracing · browser extension, origin checks, local-only mode · dynamic analysis, fuzzy similarity, partner imports · non-English text.
 
-**Open decisions (not yet applied; don't pre-empt):** (1) Phase 1 slice = Guard effect analysis + minimal Intel; (2) defer Scan beyond a minimal library until the labeled-corpus experiment shows signal.
+**Decided (ADR 0002):** Phase 1 slice = Guard effect analysis + minimal Intel (look-alike and home-domain detectors only). **Still open (don't pre-empt):** defer Scan beyond a minimal library until the labeled-corpus experiment (E3) shows signal.
 
 ## 5. Language policy for anything a user can see
 
