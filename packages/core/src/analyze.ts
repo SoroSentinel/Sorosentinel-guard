@@ -2,7 +2,10 @@ import { decodeForAnalysis } from "./decode/envelope.ts";
 import type { Network, UnanalyzableReason } from "./decode/types.ts";
 import { deriveEffects } from "./effects/derive.ts";
 import type { AccountEffect, BalanceEffect } from "./effects/types.ts";
+import { accountControl } from "./rules/account-control.ts";
 import { networkUnknown } from "./rules/network-unknown.ts";
+import { noExpiry } from "./rules/no-expiry.ts";
+import { signerAdded } from "./rules/signer-added.ts";
 import { orderFindings, type Finding, type Rule } from "./rules/types.ts";
 
 export type AnalysisStatus = "findings_present" | "no_issues_found" | "partial" | "unanalyzable";
@@ -25,6 +28,11 @@ export type NotChecked =
 export interface AnalyzeContext {
   /** Passphrase of the network the transaction will be signed for. */
   networkPassphrase: string;
+  /**
+   * Reference time for time-relative checks (e.g. an expiry far in the future).
+   * Supplied by the caller so results are reproducible; Guard never reads the clock.
+   */
+  asOf?: Date;
 }
 
 export interface AnalysisResult {
@@ -42,7 +50,7 @@ export interface AnalysisResult {
   unanalyzableReason?: UnanalyzableReason;
 }
 
-const RULES: readonly Rule[] = [networkUnknown];
+const RULES: readonly Rule[] = [accountControl, networkUnknown, noExpiry, signerAdded];
 
 /**
  * Analyzes a base64 transaction envelope before signing. Never throws and
@@ -66,7 +74,7 @@ export function analyze(envelopeBase64: string, ctx: AnalyzeContext): AnalysisRe
 
   const { input } = decoded;
   const effects = deriveEffects(input);
-  const findings = orderFindings(RULES.flatMap((rule) => rule(input, effects)));
+  const findings = orderFindings(RULES.flatMap((rule) => rule(input, effects, ruleContext(ctx))));
 
   const notChecked = new Set<NotChecked>(["NC-EXECUTION-TIME", "NC-COUNTERPARTY-SIGNALS"]);
   if (effects.uncovered.length > 0) notChecked.add("NC-OPERATION-EFFECTS");
@@ -90,4 +98,9 @@ export function analyze(envelopeBase64: string, ctx: AnalyzeContext): AnalysisRe
     findings,
     notChecked: [...notChecked].sort(),
   };
+}
+
+function ruleContext(ctx: AnalyzeContext) {
+  const ms = ctx.asOf?.getTime();
+  return ms === undefined || !Number.isFinite(ms) ? {} : { asOf: BigInt(Math.floor(ms / 1000)) };
 }
