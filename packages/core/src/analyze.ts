@@ -1,4 +1,6 @@
-import { decodeForAnalysis } from "./decode/envelope.ts";
+import { xdr } from "@stellar/stellar-sdk/base";
+
+import { decodeForAnalysis, type AnalysisInput } from "./decode/envelope.ts";
 import type { Network, UnanalyzableReason } from "./decode/types.ts";
 import { deriveEffects } from "./effects/derive.ts";
 import type { AccountEffect, BalanceEffect } from "./effects/types.ts";
@@ -10,6 +12,7 @@ import { networkUnknown } from "./rules/network-unknown.ts";
 import { noExpiry } from "./rules/no-expiry.ts";
 import { signerAdded } from "./rules/signer-added.ts";
 import { orderFindings, type Finding, type Rule, type RuleContext } from "./rules/types.ts";
+import { simulateTransaction, type RpcConfig, type SimulationOutcome } from "./simulate/simulate.ts";
 
 export type AnalysisStatus = "findings_present" | "no_issues_found" | "partial" | "unanalyzable";
 
@@ -46,6 +49,12 @@ export interface AnalyzeContext {
     pinnedKeys: Readonly<Record<string, Uint8Array>>;
     maxAgeSeconds?: number;
   };
+  /**
+   * RPC endpoint for simulating Soroban invocations, chosen by the integrator
+   * (Guard has no default). Used only by `analyzeAsync`; it receives the
+   * transaction envelope and nothing else.
+   */
+  rpc?: RpcConfig;
 }
 
 /**
@@ -69,6 +78,8 @@ export interface AnalysisResult {
   snapshotStatus: SnapshotStatus;
   /** Present when status is `unanalyzable`. */
   unanalyzableReason?: UnanalyzableReason;
+  /** Present only on `analyzeAsync` results. */
+  simulation?: SimulationOutcome;
 }
 
 const RULES: readonly Rule[] = [accountControl, counterpartyFlagged, networkUnknown, noExpiry, signerAdded];
@@ -78,9 +89,37 @@ const RULES: readonly Rule[] = [accountControl, counterpartyFlagged, networkUnkn
  * never reports a clean result for anything it did not fully check.
  */
 export function analyze(envelopeBase64: string, ctx: AnalyzeContext): AnalysisResult {
+  return analyzeDecoded(envelopeBase64, ctx).result;
+}
+
+/**
+ * Runs `analyze`, then simulates Soroban invocations against `ctx.rpc`.
+ * Never throws. A successful simulation clears NC-SIMULATION; any failure
+ * keeps it, so the result stays `partial`.
+ */
+export async function analyzeAsync(envelopeBase64: string, ctx: AnalyzeContext): Promise<AnalysisResult> {
+  const { result, input } = analyzeDecoded(envelopeBase64, ctx);
+  if (input === null) return { ...result, simulation: { status: "skipped", reason: "not_decoded" } };
+  if (!input.tx.operations.some((op) => op.type === "invokeHostFunction")) {
+    return { ...result, simulation: { status: "skipped", reason: "no_invoke_host_function" } };
+  }
+  if (ctx.rpc === undefined) return { ...result, simulation: { status: "skipped", reason: "no_rpc" } };
+
+  // Re-encoded from the decoded envelope: the endpoint simulates exactly what was analyzed.
+  const envelope = xdr.TransactionEnvelope.fromXdr(envelopeBase64, "base64").toXdr("base64");
+  const simulation = await simulateTransaction(envelope, ctx.rpc);
+  if (simulation.status !== "ok") return { ...result, simulation };
+
+  // Contract balance effects are not derived from simulation yet, so
+  // NC-OPERATION-EFFECTS remains and the result stays `partial`.
+  const notChecked = result.notChecked.filter((c) => c !== "NC-SIMULATION");
+  return { ...result, status: statusOf(notChecked, result.findings), notChecked, simulation };
+}
+
+function analyzeDecoded(envelopeBase64: string, ctx: AnalyzeContext): { result: AnalysisResult; input: AnalysisInput | null } {
   const decoded = decodeForAnalysis(envelopeBase64, ctx.networkPassphrase);
   if (!decoded.ok) {
-    return {
+    const result: AnalysisResult = {
       status: "unanalyzable",
       txHash: null,
       network: "unknown",
@@ -92,6 +131,7 @@ export function analyze(envelopeBase64: string, ctx: AnalyzeContext): AnalysisRe
       snapshotStatus: "not_applicable",
       unanalyzableReason: decoded.reason,
     };
+    return { result, input: null };
   }
 
   const { input } = decoded;
@@ -135,15 +175,8 @@ export function analyze(envelopeBase64: string, ctx: AnalyzeContext): AnalysisRe
   if (input.tx.operations.some((op) => op.type === "invokeHostFunction")) notChecked.add("NC-SIMULATION");
   if (input.tx.network === "unknown") notChecked.add("NC-NETWORK-COVERAGE");
 
-  // Only a complete check may report `findings_present` or `no_issues_found`.
-  // NC-EXECUTION-TIME is inherent to pre-signing analysis; any other gap (and
-  // any code added later) makes the result `partial`. Without a verified
-  // snapshot, counterparties are unchecked, so the result is `partial`.
-  const complete = [...notChecked].every((c) => c === "NC-EXECUTION-TIME");
-  const status: AnalysisStatus = !complete ? "partial" : findings.length > 0 ? "findings_present" : "no_issues_found";
-
-  return {
-    status,
+  const result: AnalysisResult = {
+    status: statusOf([...notChecked], findings),
     txHash: input.tx.txHash,
     network: input.tx.network,
     operationCount: input.tx.operations.length,
@@ -153,6 +186,16 @@ export function analyze(envelopeBase64: string, ctx: AnalyzeContext): AnalysisRe
     notChecked: [...notChecked].sort(),
     snapshotStatus,
   };
+  return { result, input };
+}
+
+// Only a complete check may report `findings_present` or `no_issues_found`.
+// NC-EXECUTION-TIME is inherent to pre-signing analysis; any other gap (and
+// any code added later) makes the result `partial`. Without a verified
+// snapshot, counterparties are unchecked, so the result is `partial`.
+function statusOf(notChecked: readonly NotChecked[], findings: readonly Finding[]): AnalysisStatus {
+  const complete = notChecked.every((c) => c === "NC-EXECUTION-TIME");
+  return !complete ? "partial" : findings.length > 0 ? "findings_present" : "no_issues_found";
 }
 
 function ruleContext(ctx: AnalyzeContext): RuleContext {
