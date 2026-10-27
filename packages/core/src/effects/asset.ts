@@ -13,9 +13,9 @@ export function assetKey(asset: xdr.Asset): string {
     case "assetTypeNative":
       return "native";
     case "assetTypeCreditAlphanum4":
-      return credit(asset.alphaNum4.assetCode.toBytes(), asset.alphaNum4.issuer);
+      return creditKey(asset.alphaNum4.assetCode.toBytes(), asset.alphaNum4.issuer);
     case "assetTypeCreditAlphanum12":
-      return credit(asset.alphaNum12.assetCode.toBytes(), asset.alphaNum12.issuer);
+      return creditKey(asset.alphaNum12.assetCode.toBytes(), asset.alphaNum12.issuer);
     default:
       return assertNever(asset);
   }
@@ -30,7 +30,8 @@ export function accountId(key: xdr.PublicKey): string {
   }
 }
 
-function credit(codeBytes: Uint8Array, issuer: xdr.PublicKey): string {
+/** "CODE:ISSUER" from zero-padded code bytes; shared by Asset and ChangeTrustAsset. */
+export function creditKey(codeBytes: Uint8Array, issuer: xdr.PublicKey): string {
   // Codes are zero-padded on the wire; anything else must be ASCII alphanumeric.
   let end = codeBytes.length;
   while (end > 0 && codeBytes[end - 1] === 0) end--;

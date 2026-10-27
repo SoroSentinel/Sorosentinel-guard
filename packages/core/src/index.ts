@@ -4,5 +4,5 @@ export { operationSupport } from "./decode/operations.ts";
 export type * from "./decode/types.ts";
 export { decodeForAnalysis } from "./decode/envelope.ts";
 export type { AnalysisInput, AnalysisDecodeResult } from "./decode/envelope.ts";
-export { deriveBalanceEffects } from "./effects/balances.ts";
+export { deriveEffects } from "./effects/derive.ts";
 export type * from "./effects/types.ts";
