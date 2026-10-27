@@ -9,3 +9,4 @@ export type * from "./effects/types.ts";
 export { analyze } from "./analyze.ts";
 export type { AnalysisResult, AnalysisStatus, AnalyzeContext, NotChecked } from "./analyze.ts";
 export type { Finding, FindingCode, Severity } from "./rules/types.ts";
+export { MAX_DISPLAY_LENGTH, escapeHtml, sanitizeHexBytes, sanitizeUntrusted } from "./wording/sanitize.ts";
