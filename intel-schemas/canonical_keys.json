@@ -1,0 +1,110 @@
+{
+  "spec": "schemas/canonical-key.md",
+  "version": "0.1.0-draft",
+  "note": "Synthetic keys (all-zero strkeys). Hashes computed independently with `shasum -a 256`.",
+  "cases": [
+    {
+      "name": "account",
+      "input": { "network": "public", "type": "account", "key": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" },
+      "canonical": "public|account|GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+      "hash128": "8b079656a7f799dc45e331128db881e2"
+    },
+    {
+      "name": "native asset",
+      "input": { "network": "testnet", "type": "asset", "key": "native" },
+      "canonical": "testnet|asset|native",
+      "hash128": "3707fef7a7383ee2754501c5d49db21a"
+    },
+    {
+      "name": "credit asset",
+      "input": { "network": "public", "type": "asset", "key": "USDC:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" },
+      "canonical": "public|asset|USDC:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+      "hash128": "a9220333b6ea46d81dd28746b9024e23"
+    },
+    {
+      "name": "asset code case is preserved",
+      "input": { "network": "public", "type": "asset", "key": "usdc:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" },
+      "canonical": "public|asset|usdc:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+      "hash128": "7689e90f0023b96794026d165933f288"
+    },
+    {
+      "name": "contract",
+      "input": { "network": "public", "type": "contract", "key": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM" },
+      "canonical": "public|contract|CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+      "hash128": "904cec776975e3d42a745972b608c0b7"
+    },
+    {
+      "name": "wasm hash is lowercased",
+      "input": { "network": "public", "type": "wasm_hash", "key": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB" },
+      "canonical": "public|wasm_hash|abababababababababababababababababababababababababababababababab",
+      "hash128": "b004c3a4a3385d7d934d08226964b2b8"
+    },
+    {
+      "name": "domain is lowercased and trailing dot removed",
+      "input": { "network": "public", "type": "domain", "key": "Example.COM." },
+      "canonical": "public|domain|example.com",
+      "hash128": "903f37f7e120ad8239233975d61e138e"
+    },
+    {
+      "name": "punycode domain kept as A-label",
+      "input": { "network": "testnet", "type": "domain", "key": "xn--exmple-cua.com" },
+      "canonical": "testnet|domain|xn--exmple-cua.com",
+      "hash128": "6b4593373b2bfdab22b61ebfb5443407"
+    },
+    {
+      "name": "unknown network",
+      "input": { "network": "futurenet", "type": "account", "key": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" },
+      "error": "unknown_network"
+    },
+    {
+      "name": "unknown type",
+      "input": { "network": "public", "type": "liquidity_pool", "key": "abc" },
+      "error": "unknown_type"
+    },
+    {
+      "name": "muxed account must be normalized first",
+      "input": { "network": "public", "type": "account", "key": "MAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" },
+      "error": "muxed_not_normalized"
+    },
+    {
+      "name": "lowercase strkey rejected",
+      "input": { "network": "public", "type": "account", "key": "gaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaawhf" },
+      "error": "invalid_key"
+    },
+    {
+      "name": "asset code longer than 12",
+      "input": { "network": "public", "type": "asset", "key": "ABCDEFGHIJKLM:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" },
+      "error": "invalid_key"
+    },
+    {
+      "name": "asset code with punctuation",
+      "input": { "network": "public", "type": "asset", "key": "US-D:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" },
+      "error": "invalid_key"
+    },
+    {
+      "name": "asset issuer muxed",
+      "input": { "network": "public", "type": "asset", "key": "USDC:MAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" },
+      "error": "muxed_not_normalized"
+    },
+    {
+      "name": "short wasm hash",
+      "input": { "network": "public", "type": "wasm_hash", "key": "abababababababababababababababababababababababababababababababa" },
+      "error": "invalid_key"
+    },
+    {
+      "name": "non-ASCII domain (Cyrillic a)",
+      "input": { "network": "public", "type": "domain", "key": "exаmple.com" },
+      "error": "non_ascii"
+    },
+    {
+      "name": "domain with bidi control",
+      "input": { "network": "public", "type": "domain", "key": "example‮.com" },
+      "error": "non_ascii"
+    },
+    {
+      "name": "single-label domain",
+      "input": { "network": "public", "type": "domain", "key": "localhost" },
+      "error": "invalid_key"
+    }
+  ]
+}
