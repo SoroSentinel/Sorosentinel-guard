@@ -5,7 +5,7 @@
 [![CI](https://github.com/SoroSentinel/Sorosentinel-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/SoroSentinel/Sorosentinel-guard/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript)
 ![Stellar](https://img.shields.io/badge/Stellar-Soroban-black)
-![License](https://img.shields.io/badge/license-TODO-lightgrey)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 Guard is a TypeScript SDK that a wallet calls just before a user signs. It decodes the exact transaction bytes being signed, works out what each operation does to each account (balances, signers, trustlines, contract authorizations), checks counterparties against SoroSentinel's signed snapshot, and returns findings ordered by severity. It never sees private keys and never reports a transaction as "safe": the best result is "no issues found" plus a list of what was not checked.
 
@@ -76,4 +76,4 @@ Do not open public issues for vulnerabilities. See [SECURITY.md](SECURITY.md). T
 
 ## License
 
-TODO: choose a license (see the open question in the maintainer notes) and add a `LICENSE` file.
+Licensed under the [Apache License, Version 2.0](LICENSE).
