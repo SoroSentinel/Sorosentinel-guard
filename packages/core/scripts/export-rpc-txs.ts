@@ -3,8 +3,9 @@
 // Run: node packages/core/scripts/export-rpc-txs.ts --url https://soroban-testnet.stellar.org
 //
 // Writes public envelope XDR only. The default path is gitignored and no
-// transaction file is ever committed. The summary prints counts and a network
-// label, never the passphrase, addresses, hashes or transaction content.
+// transaction file is ever committed. The summary prints counts only: the
+// network is validated against the two known passphrases and refused if
+// unknown, but never echoed, and no address, hash or transaction content is.
 import { mkdirSync, writeFileSync } from "node:fs";
 
 import { Server } from "@stellar/stellar-sdk/rpc";
@@ -23,9 +24,6 @@ interface Options {
 }
 
 interface Summary {
-  /** Which network the export came from, named rather than echoed: the
-   *  passphrase itself never goes to stdout. */
-  network: NetworkLabel;
   requested: number;
   written: number;
   ledgerRange: [number, number];
@@ -98,6 +96,13 @@ async function main(argv: readonly string[]): Promise<void> {
 
   const server = new Server(opts.url);
   const { passphrase } = await server.getNetwork();
+  // Checked, not printed: a sample from a network this repo does not know is
+  // not an E2 sample, and the passphrase must not reach stdout either way.
+  if (networkLabel(passphrase) === "unknown") {
+    console.error("export-rpc-txs: endpoint reports a network this repo does not recognise; refusing to export");
+    process.exitCode = 2;
+    return;
+  }
   const latest = (await server.getLatestLedger()).sequence;
   const start = opts.fromLedger ?? Math.max(1, latest - opts.ledgers);
 
@@ -145,7 +150,6 @@ async function main(argv: readonly string[]): Promise<void> {
   mkdirSync(parentOf(opts.out), { recursive: true });
   writeFileSync(opts.out, lines.join(""));
   const summary: Summary = {
-    network: networkLabel(passphrase),
     requested: opts.count,
     written: lines.length,
     ledgerRange: [low, high],
@@ -154,9 +158,6 @@ async function main(argv: readonly string[]): Promise<void> {
     stopped,
   };
   console.log(JSON.stringify(summary, null, 2));
-  if (summary.network === "unknown") {
-    console.error("export-rpc-txs: endpoint reported a network this repo does not know; check it before trusting the sample");
-  }
   if (lines.length === 0) {
     console.error("export-rpc-txs: no transactions exported");
     process.exitCode = 1;
