@@ -2,6 +2,7 @@ import { xdr } from "@stellar/stellar-sdk/base";
 
 import { decodeForAnalysis, type AnalysisInput } from "./decode/envelope.ts";
 import type { Network, UnanalyzableReason } from "./decode/types.ts";
+import { contractEffects, type ContractEffects } from "./effects/contract.ts";
 import { deriveEffects } from "./effects/derive.ts";
 import type { AccountEffect, BalanceEffect } from "./effects/types.ts";
 import { collectEntities, lookup, type CounterpartyHit } from "./intel/lookup.ts";
@@ -12,7 +13,7 @@ import { networkUnknown } from "./rules/network-unknown.ts";
 import { noExpiry } from "./rules/no-expiry.ts";
 import { signerAdded } from "./rules/signer-added.ts";
 import { orderFindings, type Finding, type Rule, type RuleContext } from "./rules/types.ts";
-import { simulateTransaction, type RpcConfig, type SimulationOutcome } from "./simulate/simulate.ts";
+import { runSimulation, type RpcConfig, type SimulationOutcome } from "./simulate/simulate.ts";
 
 export type AnalysisStatus = "findings_present" | "no_issues_found" | "partial" | "unanalyzable";
 
@@ -89,53 +90,52 @@ const RULES: readonly Rule[] = [accountControl, counterpartyFlagged, networkUnkn
  * never reports a clean result for anything it did not fully check.
  */
 export function analyze(envelopeBase64: string, ctx: AnalyzeContext): AnalysisResult {
-  return analyzeDecoded(envelopeBase64, ctx).result;
+  const decoded = decodeForAnalysis(envelopeBase64, ctx.networkPassphrase);
+  return decoded.ok ? evaluate(decoded.input, ctx, null) : undecodable(decoded.reason);
 }
 
 /**
  * Runs `analyze`, then simulates Soroban invocations against `ctx.rpc`.
- * Never throws. A successful simulation clears NC-SIMULATION; any failure
- * keeps it, so the result stays `partial`.
+ * Never throws. A successful simulation clears NC-SIMULATION and supplies the
+ * invocation's balance effects; NC-OPERATION-EFFECTS clears only when those
+ * are complete. Any failure keeps both, so the result stays `partial`.
  */
 export async function analyzeAsync(envelopeBase64: string, ctx: AnalyzeContext): Promise<AnalysisResult> {
-  const { result, input } = analyzeDecoded(envelopeBase64, ctx);
-  if (input === null) return { ...result, simulation: { status: "skipped", reason: "not_decoded" } };
-  if (!input.tx.operations.some((op) => op.type === "invokeHostFunction")) {
-    return { ...result, simulation: { status: "skipped", reason: "no_invoke_host_function" } };
-  }
-  if (ctx.rpc === undefined) return { ...result, simulation: { status: "skipped", reason: "no_rpc" } };
+  const decoded = decodeForAnalysis(envelopeBase64, ctx.networkPassphrase);
+  if (!decoded.ok) return { ...undecodable(decoded.reason), simulation: { status: "skipped", reason: "not_decoded" } };
+  const { input } = decoded;
+  const invocations = input.tx.operations.filter((op) => op.type === "invokeHostFunction").length;
+  if (invocations === 0) return { ...evaluate(input, ctx, null), simulation: { status: "skipped", reason: "no_invoke_host_function" } };
+  if (ctx.rpc === undefined) return { ...evaluate(input, ctx, null), simulation: { status: "skipped", reason: "no_rpc" } };
 
   // Re-encoded from the decoded envelope: the endpoint simulates exactly what was analyzed.
   const envelope = xdr.TransactionEnvelope.fromXdr(envelopeBase64, "base64").toXdr("base64");
-  const simulation = await simulateTransaction(envelope, ctx.rpc);
-  if (simulation.status !== "ok") return { ...result, simulation };
+  const { outcome, trace } = await runSimulation(envelope, ctx.rpc);
+  if (outcome.status !== "ok" || trace === null) return { ...evaluate(input, ctx, null), simulation: outcome };
 
-  // Contract balance effects are not derived from simulation yet, so
-  // NC-OPERATION-EFFECTS remains and the result stays `partial`.
-  const notChecked = result.notChecked.filter((c) => c !== "NC-SIMULATION");
-  return { ...result, status: statusOf(notChecked, result.findings), notChecked, simulation };
+  // The network allows one invocation per transaction; anything else is not attributed.
+  const contract = invocations === 1 ? contractEffects(trace, ctx.networkPassphrase) : undefined;
+  return { ...evaluate(input, ctx, { contract }), simulation: outcome };
 }
 
-function analyzeDecoded(envelopeBase64: string, ctx: AnalyzeContext): { result: AnalysisResult; input: AnalysisInput | null } {
-  const decoded = decodeForAnalysis(envelopeBase64, ctx.networkPassphrase);
-  if (!decoded.ok) {
-    const result: AnalysisResult = {
-      status: "unanalyzable",
-      txHash: null,
-      network: "unknown",
-      operationCount: 0,
-      effects: [],
-      accountEffects: [],
-      findings: [],
-      notChecked: ["NC-DECODE"],
-      snapshotStatus: "not_applicable",
-      unanalyzableReason: decoded.reason,
-    };
-    return { result, input: null };
-  }
+function undecodable(reason: UnanalyzableReason): AnalysisResult {
+  return {
+    status: "unanalyzable",
+    txHash: null,
+    network: "unknown",
+    operationCount: 0,
+    effects: [],
+    accountEffects: [],
+    findings: [],
+    notChecked: ["NC-DECODE"],
+    snapshotStatus: "not_applicable",
+    unanalyzableReason: reason,
+  };
+}
 
-  const { input } = decoded;
-  const effects = deriveEffects(input);
+/** `simulated` is null when Soroban invocations were not simulated successfully. */
+function evaluate(input: AnalysisInput, ctx: AnalyzeContext, simulated: { contract: ContractEffects | undefined } | null): AnalysisResult {
+  const effects = deriveEffects(input, simulated?.contract);
   const rc = ruleContext(ctx);
 
   // Counterparty lookup: only against a snapshot that verifies, matches the
@@ -172,10 +172,10 @@ function analyzeDecoded(envelopeBase64: string, ctx: AnalyzeContext): { result: 
   const notChecked = new Set<NotChecked>(["NC-EXECUTION-TIME"]);
   if (!counterpartiesChecked) notChecked.add("NC-COUNTERPARTY-SIGNALS");
   if (effects.uncovered.length > 0) notChecked.add("NC-OPERATION-EFFECTS");
-  if (input.tx.operations.some((op) => op.type === "invokeHostFunction")) notChecked.add("NC-SIMULATION");
+  if (simulated === null && input.tx.operations.some((op) => op.type === "invokeHostFunction")) notChecked.add("NC-SIMULATION");
   if (input.tx.network === "unknown") notChecked.add("NC-NETWORK-COVERAGE");
 
-  const result: AnalysisResult = {
+  return {
     status: statusOf([...notChecked], findings),
     txHash: input.tx.txHash,
     network: input.tx.network,
@@ -186,7 +186,6 @@ function analyzeDecoded(envelopeBase64: string, ctx: AnalyzeContext): { result: 
     notChecked: [...notChecked].sort(),
     snapshotStatus,
   };
-  return { result, input };
 }
 
 // Only a complete check may report `findings_present` or `no_issues_found`.

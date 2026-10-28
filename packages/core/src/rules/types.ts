@@ -15,6 +15,7 @@ export type Severity = "critical" | "high" | "medium" | "low" | "info";
 /** Finding codes implemented so far (ARCHITECTURE §5.2). */
 export type FindingCode =
   | "G-ACCOUNT-CONTROL"
+  | "G-CONTRACT-FLAGGED"
   | "G-DEST-FLAGGED"
   | "G-NETWORK-UNKNOWN"
   | "G-NO-EXPIRY"
