@@ -1,0 +1,24 @@
+{
+  "name": "muxed_destination",
+  "description": "Payment without a memo to a muxed M... destination (SEP-29 exempts it)",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAGQAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAEAAAAAAAAAAQAAAQAAAAAAAAAAKm56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAA7msoAAAAAAAAAAAG0D29cAAAAQCrxdIn0PU2fSw/+HEftxsX9Q4oyXN++yqozBYFZo1X+08lYpRfZPw/pyQJHsmtbhRgdztxvJhnVRbtsrY9a5Qw=",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "payment",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "a208b0815c5f3900aa0d005b1a95edaf2cf36860f08c4933e13ff5a50b76e542"
+  }
+}

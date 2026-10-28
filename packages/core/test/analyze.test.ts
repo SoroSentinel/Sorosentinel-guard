@@ -34,7 +34,8 @@ describe("analyze status", () => {
   it("without a counterparty lookup, a plain payment is partial, not clean", () => {
     const r = run("benign/payment_native.json");
     expect(r.status).toBe("partial");
-    expect(r.notChecked).toEqual(["NC-COUNTERPARTY-SIGNALS", "NC-EXECUTION-TIME"]);
+    // No memo and no ledger data: the destination's SEP-29 requirement is unchecked too.
+    expect(r.notChecked).toEqual(["NC-COUNTERPARTY-SIGNALS", "NC-EXECUTION-TIME", "NC-MEMO-REQUIRED"]);
     expect(r.findings).toEqual([]);
     expect(r.operationCount).toBe(1);
     expect(r.txHash).toMatch(/^[0-9a-f]{64}$/);

@@ -31,6 +31,8 @@ const signer = testKey(1);
 const other = testKey(2);
 const issuer = testKey(3);
 const feePayer = testKey(4);
+// Stands in for a custodial account; tests give it the SEP-29 data entry through a fake RPC.
+const custodian = testKey(5);
 const usdc = new Asset("USDC", issuer.publicKey());
 const contractId = StrKey.encodeContract(new Uint8Array(32).fill(7));
 
@@ -237,6 +239,33 @@ write("hostile", "op_source_other_account", "Operation moves another account's f
   write("hostile", "muxed_source", "Transaction source is a muxed M... account", P,
     signed(builder(P, muxed).addOperation(Operation.payment({ destination: other.publicKey(), asset: Asset.native(), amount: "1" })).build(), signer),
     v1("public", one("payment"), { source_muxed_id: "1234" }));
+}
+
+// SEP-29: no memo, so each destination's `config.memo_required` entry decides.
+write("hostile", "memo_required_destination", "Payment without a memo to an account that may require one (SEP-29)", P,
+  signed(builder(P).addOperation(Operation.payment({ destination: custodian.publicKey(), asset: Asset.native(), amount: "100" })).build(), signer),
+  v1("public", one("payment")));
+
+{
+  const muxed = new MuxedAccount(new Account(custodian.publicKey(), "0"), "42").accountId();
+  write("hostile", "muxed_destination", "Payment without a memo to a muxed M... destination (SEP-29 exempts it)", P,
+    signed(builder(P).addOperation(Operation.payment({ destination: muxed, asset: Asset.native(), amount: "100" })).build(), signer),
+    v1("public", one("payment")));
+}
+
+{
+  const muxed = new MuxedAccount(new Account(custodian.publicKey(), "0"), "42").accountId();
+  const b = builder(P)
+    .addOperation(Operation.payment({ destination: custodian.publicKey(), asset: Asset.native(), amount: "1" }))
+    .addOperation(Operation.pathPaymentStrictReceive({ sendAsset: Asset.native(), sendMax: "10", destination: other.publicKey(), destAsset: usdc, destAmount: "1", path: [] }))
+    .addOperation(Operation.pathPaymentStrictSend({ sendAsset: Asset.native(), sendAmount: "10", destination: custodian.publicKey(), destAsset: usdc, destMin: "1", path: [] }))
+    .addOperation(Operation.manageData({ name: "note", value: "x" }))
+    .addOperation(Operation.createAccount({ destination: testKey(6).publicKey(), startingBalance: "2" }))
+    .addOperation(Operation.payment({ destination: muxed, asset: Asset.native(), amount: "1" }))
+    .addOperation(Operation.accountMerge({ destination: other.publicKey() }));
+  const types = ["payment", "pathPaymentStrictReceive", "pathPaymentStrictSend", "manageData", "createAccount", "payment", "accountMerge"];
+  write("hostile", "memo_required_operations", "No memo; SEP-29 operations to plain, repeated and muxed destinations mixed with others", P,
+    signed(b.build(), signer), v1("public", types.map((type) => ({ type, source: S, has_own_source: false }))));
 }
 
 write("hostile", "unknown_network", "Signed for a passphrase with no Intel coverage", "Standalone Network ; February 2017",

@@ -219,7 +219,8 @@ describe("analyzeAsync simulation", () => {
   });
 
   it("non-Soroban transactions are skipped without calling the endpoint", async () => {
-    const payment = fixture("benign/payment_native.json");
+    // With a memo, so no SEP-29 lookup either.
+    const payment = fixture("benign/memo_id.json");
     const { fetch: f, calls } = fakeFetch(() => json(success()));
     const r = await analyzeAsync(payment.xdr, { networkPassphrase: payment.network_passphrase, rpc: { url: URL_, fetch: f } });
     expect(r.simulation).toEqual({ status: "skipped", reason: "no_invoke_host_function" });

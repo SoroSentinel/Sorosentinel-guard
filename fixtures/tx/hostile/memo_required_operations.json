@@ -1,0 +1,54 @@
+{
+  "name": "memo_required_operations",
+  "description": "No memo; SEP-29 operations to plain, repeated and muxed destinations mixed with others",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  "xdr": "AAAAAgAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAArwAAAAAB1vNFgAAAAEAAAAAat/pgAAAAABq3+qsAAAAAAAAAAcAAAAAAAAAAQAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAAAAAAAAAJiWgAAAAAAAAAACAAAAAAAAAAAF9eEAAAAAAIE5dw6ofRdfVqNUZsNMfszLjYqRtO43ol32D1uPybOUAAAAAVVTREMAAAAA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EAAAAAAJiWgAAAAAAAAAAAAAAADQAAAAAAAAAABfXhAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAAFVU0RDAAAAAO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRAAAAAACYloAAAAAAAAAAAAAAAAoAAAAEbm90ZQAAAAEAAAABeAAAAAAAAAAAAAAAAAAAAIqHX/8es4RRV3rNWv7kBUVlaN18ieCQhjoFV7x69J8XAAAAAAExLQAAAAAAAAAAAQAAAQAAAAAAAAAAKm56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAAAmJaAAAAAAAAAAAgAAAAAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5QAAAAAAAAAAbQPb1wAAABAIzNmkb38Xd1etDqUspbpTVRlIllPnyP3glGRLcb4Qx1LcK/cGMNNA3i8sIBtyp9ODkmt09+IHeO+RDiuWTOOBw==",
+  "expected": {
+    "envelope": "tx",
+    "network": "public",
+    "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+    "time_bounds": {
+      "min": "1793059200",
+      "max": "1793059500"
+    },
+    "memo_type": "none",
+    "operations": [
+      {
+        "type": "payment",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      },
+      {
+        "type": "pathPaymentStrictReceive",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      },
+      {
+        "type": "pathPaymentStrictSend",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      },
+      {
+        "type": "manageData",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      },
+      {
+        "type": "createAccount",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      },
+      {
+        "type": "payment",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      },
+      {
+        "type": "accountMerge",
+        "source": "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
+        "has_own_source": false
+      }
+    ],
+    "tx_hash": "d08ea2ebc4233f69c77f9c0ccaf0d8b37b26a5625fc388ffdce5a85dda537698"
+  }
+}
