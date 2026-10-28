@@ -38,7 +38,7 @@ Phase 0. In place: an envelope and operation decoder covering every operation ty
 
 ## Quick start
 
-Prerequisites: Node.js 22.12+ and pnpm 10.34.7.
+Prerequisites: Node.js 22.12+ and pnpm 10.34.7 (`corepack enable pnpm` installs the pinned, hash-checked version).
 
 ```bash
 git clone https://github.com/SoroSentinel/Sorosentinel-guard.git
