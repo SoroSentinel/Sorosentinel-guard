@@ -13,6 +13,9 @@ export const DEFAULT_SIMULATION_TIMEOUT_MS = 10_000;
 export const MAX_SIMULATION_TIMEOUT_MS = 60_000;
 // TODO(verify): largest legitimate simulateTransaction response.
 export const MAX_SIMULATION_RESPONSE_BYTES = 1024 * 1024;
+// TODO(verify): largest legitimate event and state-change counts.
+const MAX_EVENTS = 2_000;
+const MAX_STATE_CHANGES = 2_000;
 
 const REQUEST_ID = 1;
 const INT64_MAX = 2n ** 63n - 1n;
@@ -53,25 +56,53 @@ export type SimulationOutcome =
 
 type Failure = Exclude<SimulationOutcome, { status: "ok" | "skipped" | "timeout" }>;
 
+/** One ledger entry the simulated invocation creates, updates or removes. */
+export interface StateChange {
+  key: xdr.LedgerKey;
+  before: xdr.LedgerEntry | null;
+  after: xdr.LedgerEntry | null;
+}
+
+/**
+ * Decoded events and state changes of a successful simulation, used to derive
+ * contract effects. Internal: never part of a result. `stateChanges` is null
+ * when the endpoint did not report them. `ok: false` means they were present
+ * but could not be decoded.
+ */
+export type SimulationTrace =
+  | { ok: true; events: xdr.DiagnosticEvent[]; stateChanges: StateChange[] | null }
+  | { ok: false };
+
+interface Simulated {
+  outcome: SimulationOutcome;
+  /** Present only with an `ok` outcome. */
+  trace: SimulationTrace | null;
+}
+
 /**
  * Calls `simulateTransaction` on the configured endpoint. Sends only the
  * envelope; never throws. Anything other than a well-formed success is a
  * failure outcome, never a guess.
  */
 export async function simulateTransaction(envelopeBase64: string, rpc: RpcConfig): Promise<SimulationOutcome> {
+  return (await runSimulation(envelopeBase64, rpc)).outcome;
+}
+
+/** Like `simulateTransaction`, but also returns the decoded trace of a successful simulation. */
+export async function runSimulation(envelopeBase64: string, rpc: RpcConfig): Promise<Simulated> {
   const timeoutMs = rpc.timeoutMs ?? DEFAULT_SIMULATION_TIMEOUT_MS;
   const fetchImpl = rpc.fetch ?? globalThis.fetch;
   if (!validEndpoint(rpc.url) || !validTimeout(timeoutMs) || typeof fetchImpl !== "function") {
-    return { status: "error", reason: "invalid_config" };
+    return { outcome: { status: "error", reason: "invalid_config" }, trace: null };
   }
 
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   // Raced rather than relying on the signal alone: an injected fetch may ignore it.
-  const deadline = new Promise<SimulationOutcome>((resolve) => {
+  const deadline = new Promise<Simulated>((resolve) => {
     timer = setTimeout(() => {
       controller.abort();
-      resolve({ status: "timeout", timeoutMs });
+      resolve({ outcome: { status: "timeout", timeoutMs }, trace: null });
     }, timeoutMs);
   });
   try {
@@ -82,7 +113,9 @@ export async function simulateTransaction(envelopeBase64: string, rpc: RpcConfig
   }
 }
 
-async function exchange(fetchImpl: typeof fetch, url: string, envelopeBase64: string, signal: AbortSignal): Promise<SimulationOutcome> {
+const failed = (outcome: SimulationOutcome): Simulated => ({ outcome, trace: null });
+
+async function exchange(fetchImpl: typeof fetch, url: string, envelopeBase64: string, signal: AbortSignal): Promise<Simulated> {
   let response: Response;
   try {
     response = await fetchImpl(url, {
@@ -96,24 +129,24 @@ async function exchange(fetchImpl: typeof fetch, url: string, envelopeBase64: st
       cache: "no-store",
     });
   } catch {
-    return { status: "error", reason: "network" };
+    return failed({ status: "error", reason: "network" });
   }
   if (!response.ok) {
-    return { status: "error", reason: "http", httpStatus: response.status };
+    return failed({ status: "error", reason: "http", httpStatus: response.status });
   }
   try {
     const body = await readCapped(response, MAX_SIMULATION_RESPONSE_BYTES);
-    if (!body.ok) return { status: "malformed", reason: body.reason };
+    if (!body.ok) return failed({ status: "malformed", reason: body.reason });
     let json: unknown;
     try {
       json = JSON.parse(body.text);
     } catch {
-      return { status: "malformed", reason: "invalid_json" };
+      return failed({ status: "malformed", reason: "invalid_json" });
     }
     return parseResponse(json);
   } catch {
     // Body stream failed (including abort after the deadline).
-    return { status: "error", reason: "network" };
+    return failed({ status: "error", reason: "network" });
   }
 }
 
@@ -157,7 +190,13 @@ async function readCapped(response: Response, maxBytes: number): Promise<Body> {
   }
 }
 
-function parseResponse(json: unknown): SimulationOutcome {
+function parseResponse(json: unknown): Simulated {
+  const outcome = parseOutcome(json);
+  if (outcome.status !== "ok" || !isRecord(json) || !isRecord(json["result"])) return { outcome, trace: null };
+  return { outcome, trace: parseTrace(json["result"]) };
+}
+
+function parseOutcome(json: unknown): SimulationOutcome {
   const malformed: Failure = { status: "malformed", reason: "invalid_shape" };
   if (!isRecord(json) || json["jsonrpc"] !== "2.0" || json["id"] !== REQUEST_ID) return malformed;
   if (Object.hasOwn(json, "error")) {
@@ -203,6 +242,38 @@ function parseResponse(json: unknown): SimulationOutcome {
     authRequired,
     restore,
   };
+}
+
+// Absent events mean none were emitted. Absent state changes are not taken
+// to mean "no changes": older endpoints omit them, so they stay unknown.
+function parseTrace(result: Record<string, unknown>): SimulationTrace {
+  const rawEvents = field(result, "events") ?? [];
+  const rawChanges = field(result, "stateChanges");
+  if (!Array.isArray(rawEvents) || rawEvents.length > MAX_EVENTS) return { ok: false };
+  if (rawChanges !== undefined && (!Array.isArray(rawChanges) || rawChanges.length > MAX_STATE_CHANGES)) return { ok: false };
+  try {
+    const events = rawEvents.map((e: unknown) => {
+      if (typeof e !== "string") throw new TypeError("event");
+      return xdr.DiagnosticEvent.fromXdr(e, "base64");
+    });
+    const stateChanges = rawChanges === undefined ? null : rawChanges.map(stateChange);
+    return { ok: true, events, stateChanges };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** Throws on anything that is not a well-formed change. */
+function stateChange(raw: unknown): StateChange {
+  if (!isRecord(raw) || typeof raw["key"] !== "string") throw new TypeError("state change");
+  const entry = (v: unknown): xdr.LedgerEntry | null => {
+    if (v === null || v === undefined) return null;
+    if (typeof v !== "string") throw new TypeError("state change entry");
+    return xdr.LedgerEntry.fromXdr(v, "base64");
+  };
+  const change = { key: xdr.LedgerKey.fromXdr(raw["key"], "base64"), before: entry(raw["before"]), after: entry(raw["after"]) };
+  if (change.before === null && change.after === null) throw new TypeError("empty state change");
+  return change;
 }
 
 function authEntries(hostResult: unknown): AuthEntrySummary[] | null {

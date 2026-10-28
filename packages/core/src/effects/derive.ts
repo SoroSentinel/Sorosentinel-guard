@@ -4,17 +4,13 @@ import { assertNever } from "../assert-never.ts";
 import { accountRef } from "../decode/account.ts";
 import type { AnalysisInput } from "../decode/envelope.ts";
 import { InvalidOperation, accountId, assetKey, creditKey } from "./asset.ts";
+import type { ContractEffects, Delta } from "./contract.ts";
 import type { AccountEffect, BalanceEffect, EffectsResult, SignerType, UncoveredOperation } from "./types.ts";
 
-interface Delta {
-  account: string;
-  asset: string;
-  min: bigint;
-  max: bigint | null;
-}
+type LedgerDelta = Omit<Delta, "assurance">;
 
 interface OperationEffects {
-  deltas: Delta[];
+  deltas: LedgerDelta[];
   account: AccountEffect[];
 }
 
@@ -25,22 +21,29 @@ const MAX_WEIGHT = 255;
 /**
  * Derives effects per affected account: balance changes (the fee, payment,
  * createAccount, both path payments) and account changes (changeTrust,
- * setOptions, accountMerge). Every other operation is listed in `uncovered`,
- * so callers can never mistake missing effects for none.
+ * setOptions, accountMerge). With `contract`, the effects of the
+ * transaction's single invokeHostFunction come from its simulation and it
+ * stays uncovered unless they are complete. Every other operation is listed in
+ * `uncovered`, so callers can never mistake missing effects for none.
  */
-export function deriveEffects(input: AnalysisInput): EffectsResult {
-  const deltas: Delta[] = [feeDelta(input)];
+export function deriveEffects(input: AnalysisInput, contract?: ContractEffects): EffectsResult {
+  const deltas: Delta[] = [{ ...feeDelta(input), assurance: "ledger" }];
   const accountEffects: AccountEffect[] = [];
   const uncovered: UncoveredOperation[] = [];
 
   input.operations.forEach((op, index) => {
     const source = input.tx.operations[index]?.source.account ?? input.tx.source.account;
+    if (op.body.type === "invokeHostFunction" && contract !== undefined) {
+      deltas.push(...contract.deltas);
+      if (!contract.complete) uncovered.push({ index, reason: contract.reason });
+      return;
+    }
     try {
       const e = operationEffects(op.body, source, index);
       if (e === null) {
         uncovered.push({ index, reason: "not_derived_yet" });
       } else {
-        deltas.push(...e.deltas);
+        deltas.push(...e.deltas.map((d): Delta => ({ ...d, assurance: "ledger" })));
         accountEffects.push(...e.account);
       }
     } catch (err) {
@@ -57,7 +60,7 @@ export function deriveEffects(input: AnalysisInput): EffectsResult {
  * outer fee source pays and the inner fee is not charged: CAP-15 requires the
  * fee source to cover `feeBump.tx.fee` and lets the inner source lack the balance.
  */
-function feeDelta(input: AnalysisInput): Delta {
+function feeDelta(input: AnalysisInput): LedgerDelta {
   const { tx } = input;
   if (tx.envelope === "fee_bump" && tx.feeSource && tx.feeBumpFee !== undefined) {
     return { account: tx.feeSource.account, asset: "native", min: -BigInt(tx.feeBumpFee), max: 0n };
@@ -65,7 +68,7 @@ function feeDelta(input: AnalysisInput): Delta {
   return { account: tx.source.account, asset: "native", min: -BigInt(tx.fee), max: 0n };
 }
 
-const balances = (deltas: Delta[]): OperationEffects => ({ deltas, account: [] });
+const balances = (deltas: LedgerDelta[]): OperationEffects => ({ deltas, account: [] });
 const changes = (account: AccountEffect[]): OperationEffects => ({ deltas: [], account });
 
 /** Returns null when effects for this operation type are not derived yet. */
@@ -238,11 +241,14 @@ function hex(bytes: Uint8Array): string {
   return s;
 }
 
-/** Nets deltas per (account, asset); worst case first, ties broken deterministically. */
+/**
+ * Nets deltas per (account, asset, assurance): contract-reported amounts are
+ * never folded into ledger ones. Worst case first, ties broken deterministically.
+ */
 function aggregate(deltas: Delta[]): BalanceEffect[] {
   const byKey = new Map<string, Delta>();
   for (const d of deltas) {
-    const key = `${d.account}|${d.asset}`;
+    const key = `${d.account}|${d.asset}|${d.assurance}`;
     const prev = byKey.get(key);
     if (!prev) {
       byKey.set(key, { ...d });
@@ -252,6 +258,11 @@ function aggregate(deltas: Delta[]): BalanceEffect[] {
     }
   }
   return [...byKey.values()]
-    .map((d): BalanceEffect => ({ account: d.account, asset: d.asset, deltaMin: d.min, deltaMax: d.max, assurance: "ledger" }))
-    .sort((a, b) => (a.deltaMin < b.deltaMin ? -1 : a.deltaMin > b.deltaMin ? 1 : `${a.account}|${a.asset}` < `${b.account}|${b.asset}` ? -1 : 1));
+    .map((d): BalanceEffect => ({ account: d.account, asset: d.asset, deltaMin: d.min, deltaMax: d.max, assurance: d.assurance }))
+    .sort((a, b) => {
+      if (a.deltaMin !== b.deltaMin) return a.deltaMin < b.deltaMin ? -1 : 1;
+      const ka = `${a.account}|${a.asset}|${a.assurance}`;
+      const kb = `${b.account}|${b.asset}|${b.assurance}`;
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
+    });
 }

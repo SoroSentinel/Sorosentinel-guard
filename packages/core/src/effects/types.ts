@@ -6,8 +6,12 @@ export type Assurance = "ledger" | "contract_reported";
  * `deltaMin` is the worst case and is shown first ("up to X").
  */
 export interface BalanceEffect {
+  /** `G…` account or `C…` contract address. */
   account: string;
-  /** "native" or "CODE:ISSUER" in canonical form. */
+  /**
+   * "native" or "CODE:ISSUER" in canonical form; for a token that is not a
+   * Stellar Asset Contract, the token contract's address (`C…`).
+   */
   asset: string;
   deltaMin: bigint;
   /** null when there is no upper bound (e.g. the receiver of a strict-send path payment). */
@@ -19,7 +23,14 @@ export type UncoveredReason =
   /** Effects for this operation type are not derived yet (v1 scope grows op by op). */
   | "not_derived_yet"
   /** The operation carries values the network would reject (non-positive amount, malformed asset code). */
-  | "invalid_operation";
+  | "invalid_operation"
+  /** Simulation succeeded, but its events or state changes could not be read. */
+  | "contract_events_malformed"
+  /**
+   * Simulation was read, but the invocation may change more than the balances
+   * derived (custom-token or other contract state, unrecognized events).
+   */
+  | "contract_effects_incomplete";
 
 export interface UncoveredOperation {
   index: number;

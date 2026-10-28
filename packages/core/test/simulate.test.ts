@@ -104,7 +104,7 @@ describe("analyzeAsync simulation", () => {
       restore: null,
     });
     expect(r.notChecked).not.toContain("NC-SIMULATION");
-    // Contract balance effects are not derived yet.
+    // No state changes reported, so the invocation's effects are not complete.
     expect(r.notChecked).toContain("NC-OPERATION-EFFECTS");
     expect(r.status).toBe("partial");
 
