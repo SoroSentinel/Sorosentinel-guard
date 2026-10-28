@@ -34,7 +34,7 @@ Data flows Scan → Intel → signed snapshot/API → Guard. The repos only talk
 
 ## Status
 
-Phase 1 complete in code. `analyze()` / `analyzeAsync()` decode exactly the signed bytes, derive per-account balance and account effects (worst case first), simulate Soroban calls through a caller-supplied RPC endpoint, verify Intel's signed snapshot and look up counterparties, and report findings: G-ACCOUNT-CONTROL, G-SIGNER-ADDED, G-NO-EXPIRY, G-NETWORK-UNKNOWN, G-MEMO-REQUIRED, G-DEST-FLAGGED, G-TRUST-FLAGGED, G-CONTRACT-FLAGGED. Findings carry facts only until their wording is counsel-approved. Not yet: the Protocol 30 SDK upgrade and a replay over real mainnet traffic.
+Phase 1 complete in code. `analyze()` / `analyzeAsync()` decode exactly the signed bytes, derive per-account balance and account effects (worst case first), simulate Soroban calls through a caller-supplied RPC endpoint, verify Intel's signed snapshot and look up counterparties, and report findings: G-ACCOUNT-CONTROL, G-SIGNER-ADDED, G-NO-EXPIRY, G-NETWORK-UNKNOWN, G-MEMO-REQUIRED, G-DEST-FLAGGED, G-TRUST-FLAGGED, G-CONTRACT-FLAGGED. Findings carry facts only until their wording is counsel-approved. Experiment E2 has run over 12,000 real testnet transactions: all decoded, none `unanalyzable`. Not yet: the Protocol 30 SDK upgrade and the same replay over mainnet traffic, which needs a reachable public mainnet RPC endpoint.
 
 ## Quick start
 
@@ -53,6 +53,7 @@ make verify
 | `make test` | Vitest |
 | `make gen` | Regenerate `fixtures/tx` (never edit fixtures by hand) |
 | `make replay FILE=txs.jsonl` | Decode a file of transactions and print aggregate stats |
+| `node packages/core/scripts/export-rpc-txs.ts --url …` | Export recent transactions from an RPC endpoint for `make replay` (writes the gitignored `replay/`) |
 
 ## Repository layout
 
