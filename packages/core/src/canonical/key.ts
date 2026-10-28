@@ -9,9 +9,12 @@ import { hash } from "@stellar/stellar-sdk/base";
 export type EntityType = "account" | "asset" | "contract" | "wasm_hash" | "domain";
 export type KeyErrorCode = "unknown_network" | "unknown_type" | "invalid_key" | "muxed_not_normalized" | "non_ascii";
 
+// No parameter property: Node's type stripping (used by examples/) rejects them.
 export class KeyError extends Error {
-  constructor(readonly code: KeyErrorCode) {
+  readonly code: KeyErrorCode;
+  constructor(code: KeyErrorCode) {
     super(`entity key: ${code}`);
+    this.code = code;
   }
 }
 
