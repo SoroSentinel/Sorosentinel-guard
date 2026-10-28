@@ -34,7 +34,7 @@ Data flows Scan → Intel → signed snapshot/API → Guard. The repos only talk
 
 ## Status
 
-Phase 0. In place: an envelope and operation decoder covering every operation type, with the signed-payload hash, muxed-account normalization, fee bumps and Soroban auth entries; 38 deterministic fixtures; and a replay harness for measuring decoder coverage on real traffic. Not yet built: effect derivation, findings, RPC simulation, snapshot lookup.
+Phase 1 complete in code. `analyze()` / `analyzeAsync()` decode exactly the signed bytes, derive per-account balance and account effects (worst case first), simulate Soroban calls through a caller-supplied RPC endpoint, verify Intel's signed snapshot and look up counterparties, and report findings: G-ACCOUNT-CONTROL, G-SIGNER-ADDED, G-NO-EXPIRY, G-NETWORK-UNKNOWN, G-MEMO-REQUIRED, G-DEST-FLAGGED, G-TRUST-FLAGGED, G-CONTRACT-FLAGGED. Findings carry facts only until their wording is counsel-approved. Not yet: the Protocol 30 SDK upgrade and a replay over real mainnet traffic.
 
 ## Quick start
 
