@@ -112,6 +112,7 @@ async function main(argv: readonly string[]): Promise<void> {
   const start = opts.fromLedger ?? Math.max(1, latest - opts.ledgers);
 
   const lines: string[] = [];
+  let written = 0;
   let bytes = 0;
   let pages = 0;
   let low = start;
@@ -119,7 +120,7 @@ async function main(argv: readonly string[]): Promise<void> {
   let cursor: string | undefined;
   let stopped: Summary["stopped"] = "exhausted";
 
-  for (; pages < MAX_PAGES && lines.length < opts.count; pages++) {
+  for (; pages < MAX_PAGES && written < opts.count; pages++) {
     const res =
       cursor === undefined
         ? await server.getTransactions({ startLedger: start, pagination: { limit: PAGE_LIMIT } })
@@ -129,7 +130,7 @@ async function main(argv: readonly string[]): Promise<void> {
       break;
     }
     for (const tx of res.transactions) {
-      if (lines.length >= opts.count) {
+      if (written >= opts.count) {
         stopped = "count";
         break;
       }
@@ -142,16 +143,17 @@ async function main(argv: readonly string[]): Promise<void> {
         break;
       }
       lines.push(line);
+      written++;
       bytes += xdr.length + FRAME_BYTES;
       low = Math.min(low, tx.ledger);
       high = Math.max(high, tx.ledger);
     }
     if (res.cursor === "") {
-      stopped = lines.length >= opts.count ? "count" : "exhausted";
+      stopped = written >= opts.count ? "count" : "exhausted";
       break;
     }
     cursor = res.cursor;
-    if (lines.length >= opts.count) stopped = "count";
+    if (written >= opts.count) stopped = "count";
   }
   if (pages >= MAX_PAGES && stopped !== "count") stopped = "max_pages";
 
@@ -159,14 +161,14 @@ async function main(argv: readonly string[]): Promise<void> {
   writeFileSync(opts.out, lines.join(""));
   const summary: Summary = {
     requested: opts.count,
-    written: lines.length,
+    written,
     ledgerRange: [low, high],
     pages,
     bytes,
     stopped,
   };
   console.log(JSON.stringify(summary, null, 2));
-  if (lines.length === 0) {
+  if (written === 0) {
     console.error("export-rpc-txs: no transactions exported");
     process.exitCode = 1;
   }
