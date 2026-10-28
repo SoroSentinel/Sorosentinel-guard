@@ -1,0 +1,22 @@
+# Dependabot version updates. The cooldown matches AGENTS.md §6 and
+# pnpm's minimumReleaseAge: no release younger than 14 days is proposed.
+version: 2
+updates:
+  # The pnpm workspace (root and packages/*); Dependabot reads pnpm-lock.yaml.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: "ci(deps)"
