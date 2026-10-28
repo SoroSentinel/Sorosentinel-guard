@@ -15,6 +15,11 @@ const PAGE_LIMIT = 100;
 const MAX_PAGES = 500;
 const MAX_TOTAL_BYTES = 256 << 20;
 
+// JSON framing around one record: {"xdr":"…","network_passphrase":"…"} plus a
+// newline. Measured with placeholder values so the byte cap never depends on
+// what the endpoint reports as its passphrase.
+const FRAME_BYTES = JSON.stringify({ xdr: "", network_passphrase: "x".repeat(64) }).length + 1;
+
 interface Options {
   url: string;
   out: string | URL;
@@ -128,13 +133,16 @@ async function main(argv: readonly string[]): Promise<void> {
         stopped = "count";
         break;
       }
-      const line = `${JSON.stringify({ xdr: tx.envelopeXdr.toXdr("base64"), network_passphrase: passphrase })}\n`;
-      if (bytes + line.length > MAX_TOTAL_BYTES) {
+      const xdr = tx.envelopeXdr.toXdr("base64");
+      // Size accounting uses a constant frame, not the rendered line, so no
+      // reported number is derived from the endpoint's passphrase.
+      const line = `${JSON.stringify({ xdr, network_passphrase: passphrase })}\n`;
+      if (bytes + xdr.length + FRAME_BYTES > MAX_TOTAL_BYTES) {
         stopped = "max_bytes";
         break;
       }
       lines.push(line);
-      bytes += line.length;
+      bytes += xdr.length + FRAME_BYTES;
       low = Math.min(low, tx.ledger);
       high = Math.max(high, tx.ledger);
     }
