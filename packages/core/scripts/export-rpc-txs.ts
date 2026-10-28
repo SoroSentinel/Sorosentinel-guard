@@ -3,8 +3,8 @@
 // Run: node packages/core/scripts/export-rpc-txs.ts --url https://soroban-testnet.stellar.org
 //
 // Writes public envelope XDR only. The default path is gitignored and no
-// transaction file is ever committed. The summary prints counts: addresses,
-// hashes and transaction content are not echoed.
+// transaction file is ever committed. The summary prints counts and a network
+// label, never the passphrase, addresses, hashes or transaction content.
 import { mkdirSync, writeFileSync } from "node:fs";
 
 import { Server } from "@stellar/stellar-sdk/rpc";
@@ -23,7 +23,9 @@ interface Options {
 }
 
 interface Summary {
-  networkPassphrase: string;
+  /** Which network the export came from, named rather than echoed: the
+   *  passphrase itself never goes to stdout. */
+  network: NetworkLabel;
   requested: number;
   written: number;
   ledgerRange: [number, number];
@@ -32,10 +34,18 @@ interface Summary {
   stopped: "count" | "exhausted" | "max_pages" | "max_bytes";
 }
 
+type NetworkLabel = "testnet" | "public" | "unknown";
+
+export function networkLabel(passphrase: string): NetworkLabel {
+  if (passphrase === "Test SDF Network ; September 2015") return "testnet";
+  if (passphrase === "Public Global Stellar Network ; September 2015") return "public";
+  return "unknown";
+}
+
 const USAGE =
   "usage: export-rpc-txs.ts --url <https rpc endpoint> [--count 10000] [--ledgers 500] [--from-ledger N] [--out replay/rpc-txs.jsonl]";
 
-function parseArgs(argv: readonly string[]): Options | null {
+export function parseArgs(argv: readonly string[]): Options | null {
   const opts: Partial<Options> = { count: 10_000, ledgers: 500, out: DEFAULT_OUT };
   for (let i = 0; i < argv.length; i += 2) {
     const flag = argv[i];
@@ -78,8 +88,8 @@ function parentOf(out: string | URL): string | URL {
   return i <= 0 ? "." : out.slice(0, i);
 }
 
-async function main(): Promise<void> {
-  const opts = parseArgs(process.argv.slice(2));
+async function main(argv: readonly string[]): Promise<void> {
+  const opts = parseArgs(argv);
   if (opts === null) {
     console.error(USAGE);
     process.exitCode = 2;
@@ -135,7 +145,7 @@ async function main(): Promise<void> {
   mkdirSync(parentOf(opts.out), { recursive: true });
   writeFileSync(opts.out, lines.join(""));
   const summary: Summary = {
-    networkPassphrase: passphrase,
+    network: networkLabel(passphrase),
     requested: opts.count,
     written: lines.length,
     ledgerRange: [low, high],
@@ -144,13 +154,18 @@ async function main(): Promise<void> {
     stopped,
   };
   console.log(JSON.stringify(summary, null, 2));
+  if (summary.network === "unknown") {
+    console.error("export-rpc-txs: endpoint reported a network this repo does not know; check it before trusting the sample");
+  }
   if (lines.length === 0) {
     console.error("export-rpc-txs: no transactions exported");
     process.exitCode = 1;
   }
 }
 
-main().catch((err: unknown) => {
-  console.error(`export-rpc-txs: ${err instanceof Error ? err.message : String(err)}`);
-  process.exitCode = 1;
-});
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main(process.argv.slice(2)).catch((err: unknown) => {
+    console.error(`export-rpc-txs: ${err instanceof Error ? err.message : String(err)}`);
+    process.exitCode = 1;
+  });
+}
