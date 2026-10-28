@@ -5,5 +5,5 @@
     "allowImportingTsExtensions": true,
     "types": []
   },
-  "include": ["src", "test", "scripts", "types"]
+  "include": ["src", "test", "scripts", "types", "../../examples"]
 }

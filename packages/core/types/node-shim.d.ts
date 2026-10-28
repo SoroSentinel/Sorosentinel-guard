@@ -6,9 +6,23 @@ declare module "node:fs" {
   export function readdirSync(path: string | URL): string[];
   export function writeFileSync(path: string | URL, data: string): void;
   export function mkdirSync(path: string | URL, options: { recursive: true }): void;
+  export function mkdtempSync(prefix: string): string;
+}
+
+declare module "node:os" {
+  export function tmpdir(): string;
+}
+
+declare module "node:child_process" {
+  export function spawnSync(
+    command: string,
+    args: readonly string[],
+    options: { encoding: "utf8" },
+  ): { status: number | null; stdout: string; stderr: string };
 }
 
 declare const process: {
   readonly argv: string[];
+  readonly execPath: string;
   exitCode: number | undefined;
 };
