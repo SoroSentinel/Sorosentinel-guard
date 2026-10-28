@@ -56,3 +56,25 @@ counterparties were not checked, and the result carries
 
 Intel's local demo (`make demo` in `sorosentinel-intel`, see its
 `docs/runbooks/local-demo.md`) calls this example against a live testnet stack.
+
+## States a host must not drop
+
+An integrating wallet that renders `findings` only when
+`status: findings_present` undoes every guarantee above one layer up. ADR 0005
+(draft, `sorosentinel-intel/docs/adr/0005-guard-integrator-contract.md`) lists
+the six things such a host must show; this example is the reference for them and
+prints all of them, and `packages/core/test/example.test.ts` drives it over
+fixtures so the reference host cannot shrink into the tidy case:
+
+| Must not be dropped | Where it is printed | Covered by |
+|---|---|---|
+| A snapshot that is not `verified` | `snapshot: <status>` — `stale`, `unknown_key`, `bad_signature`, `malformed`, `network_mismatch`, `from_future`, `no_as_of` | *an aged-out snapshot reads as stale and never as a clean result*, *with the wrong pinned key…* |
+| `NC-COUNTERPARTY-SIGNALS` when lookup did not run | `not_checked:` | same two tests |
+| `partial` and `unanalyzable` | `status:`, plus `unanalyzable_reason:` | *an operation Guard only decodes keeps its partial status*, *an undecodable transaction says so and still exits 0* |
+| Findings in full, most severe first, with the operation count | `findings:` + `operations:` | *prints every finding, most severe first* |
+| The hash of exactly the bytes to be signed | `tx_hash:` (inner hash for a fee bump) | *shows the hash and the operation count for a fee-bump* |
+| No destination beyond the configured RPC endpoint and Intel | reads local files and calls nothing (see above) | — |
+
+`--network` is validated before anything is decoded, so a host cannot ask this
+example to analyze against a network Guard does not know: it exits 2 instead of
+guessing a passphrase.
