@@ -1,0 +1,22 @@
+# PRD §5.1 L6. Matched case-insensitively on word boundaries, with simple
+# suffixes (s, es, ed, ly, ing, er, ers, plus one doubled letter) and flexible
+# spacing/hyphens inside phrases.
+# Changes need counsel review. Do not add exceptions.
+terms:
+  - scam
+  - scammer
+  - fraud
+  - fraudulent
+  - fake
+  - stolen
+  - theft
+  - thief
+  - hack
+  - hacker
+  - criminal
+  - illegal
+  - malicious
+  - rug pull
+  - ponzi
+  - designed to
+  - tries to

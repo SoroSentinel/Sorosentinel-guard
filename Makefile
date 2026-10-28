@@ -18,7 +18,7 @@ lint:
 test:
 	$(PNPM) -r test
 
-# Intel's pinned vectors (canonical keys, snapshot signing) must pass.
+# Intel's pinned vectors (canonical keys, snapshot signing, wording render) must pass.
 test-contract: schemas-check
 	cd packages/core && $(PNPM) exec vitest run test/contract
 
@@ -27,7 +27,7 @@ schemas-check:
 	cd intel-schemas && shasum -a 256 -c SHA256SUMS
 	@grep -q "^tag $(INTEL_SCHEMAS_TAG)$$" intel-schemas/PINNED || { echo "intel-schemas is not pinned at $(INTEL_SCHEMAS_TAG); run make pin-schemas"; exit 1; }
 
-# Re-pin Intel's schemas and vectors at a tag (needs network).
+# Re-pin Intel's schemas, vectors and blocklist at a tag (needs network).
 INTEL_SCHEMAS_TAG ?= v0.1.0-next.0
 pin-schemas:
 	scripts/pin-intel-schemas.sh $(INTEL_SCHEMAS_TAG)

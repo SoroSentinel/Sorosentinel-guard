@@ -1,0 +1,240 @@
+{
+  "version": "0.1.0",
+  "note": "Shared render vectors: Intel (Go) and Guard (TypeScript) renderers must both pass. Templates here are TEST ONLY and self-contained; the real blocklist comes from wording/blocklist.yaml.",
+  "config": {
+    "methodology_url": "https://sorosentinel.invalid/methodology",
+    "review_url": "https://sorosentinel.invalid/review"
+  },
+  "attributions": [
+    {
+      "id": "test_attr_v1",
+      "status": "counsel_approved",
+      "text": "Method: {method}, ruleset {ruleset_version}. Observed {as_of}. This is an indicator, not a determination of intent or wrongdoing. Methodology: {methodology_url}. Request a review: {review_url}."
+    },
+    {
+      "id": "test_attr_draft_v1",
+      "status": "draft",
+      "text": "Method: {method}, ruleset {ruleset_version}. Observed {as_of}. This is an indicator, not a determination of intent or wrongdoing. Methodology: {methodology_url}. Request a review: {review_url}."
+    }
+  ],
+  "templates": [
+    {
+      "id": "test.asset_code.v1",
+      "applies_to": { "entity_type": "asset" },
+      "signal_levels": ["caution", "high_caution"],
+      "text": "TEST ONLY. Asset {asset} uses the same code as {known_asset}. Observed {as_of}.",
+      "slots": { "asset": "asset_key", "known_asset": "asset_key" },
+      "attribution": "test_attr_v1",
+      "status": "counsel_approved"
+    },
+    {
+      "id": "test.domain.v1",
+      "applies_to": { "entity_type": "domain" },
+      "signal_levels": ["caution"],
+      "text": "TEST ONLY. Domain {domain} was checked at ledger {ledger}.",
+      "slots": { "domain": "domain", "ledger": "ledger" },
+      "attribution": "test_attr_v1",
+      "status": "counsel_approved"
+    },
+    {
+      "id": "test.draft.v1",
+      "applies_to": { "entity_type": "asset" },
+      "signal_levels": ["caution"],
+      "text": "TEST ONLY. Draft text for {asset}.",
+      "slots": { "asset": "asset_key" },
+      "attribution": "test_attr_v1",
+      "status": "draft"
+    },
+    {
+      "id": "test.draft_attribution.v1",
+      "applies_to": { "entity_type": "asset" },
+      "signal_levels": ["caution"],
+      "text": "TEST ONLY. Approved text for {asset}.",
+      "slots": { "asset": "asset_key" },
+      "attribution": "test_attr_draft_v1",
+      "status": "counsel_approved"
+    },
+    {
+      "id": "test.signer.v1",
+      "applies_to": { "finding": "G-TEST-SIGNER" },
+      "severities": ["critical", "high"],
+      "text": "TEST ONLY. Signer {signer} with weight {weight} on {account}.",
+      "slots": { "signer": "signer_key", "weight": "weight", "account": "account" },
+      "attribution": "test_attr_v1",
+      "status": "counsel_approved"
+    }
+  ],
+  "cases": [
+    {
+      "name": "finding template renders with an allowed severity",
+      "request": {
+        "template_id": "test.signer.v1", "severity": "critical", "as_of": "2026-10-27T09:00:00Z", "method": "G-TEST-SIGNER", "ruleset_version": "2026.10.1",
+        "slots": { "signer": { "type": "signer_key", "value": "XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" }, "weight": { "type": "weight", "value": "255" }, "account": { "type": "account", "value": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" } }
+      },
+      "expect": {
+        "text": "TEST ONLY. Signer XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA with weight 255 on GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF.",
+        "attribution": "Method: G-TEST-SIGNER, ruleset 2026.10.1. Observed 2026-10-27 09:00 UTC. This is an indicator, not a determination of intent or wrongdoing. Methodology: https://sorosentinel.invalid/methodology. Request a review: https://sorosentinel.invalid/review.",
+        "facts": { "signer": "XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "weight": "255", "account": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "as_of": "2026-10-27T09:00:00Z" }
+      }
+    },
+    {
+      "name": "finding template rejects a severity it does not list",
+      "request": {
+        "template_id": "test.signer.v1", "severity": "low", "as_of": "2026-10-27T09:00:00Z", "method": "G-TEST-SIGNER", "ruleset_version": "2026.10.1",
+        "slots": { "signer": { "type": "signer_key", "value": "XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" }, "weight": { "type": "weight", "value": "1" }, "account": { "type": "account", "value": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" } }
+      },
+      "expect": { "error": "level_not_allowed" }
+    },
+    {
+      "name": "weight above 255 is invalid",
+      "request": {
+        "template_id": "test.signer.v1", "severity": "high", "as_of": "2026-10-27T09:00:00Z", "method": "G-TEST-SIGNER", "ruleset_version": "2026.10.1",
+        "slots": { "signer": { "type": "signer_key", "value": "XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" }, "weight": { "type": "weight", "value": "256" }, "account": { "type": "account", "value": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" } }
+      },
+      "expect": { "error": "invalid_slot_value" }
+    },
+    {
+      "name": "a contract address is not a signer key",
+      "request": {
+        "template_id": "test.signer.v1", "severity": "high", "as_of": "2026-10-27T09:00:00Z", "method": "G-TEST-SIGNER", "ruleset_version": "2026.10.1",
+        "slots": { "signer": { "type": "signer_key", "value": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" }, "weight": { "type": "weight", "value": "1" }, "account": { "type": "account", "value": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" } }
+      },
+      "expect": { "error": "invalid_slot_value" }
+    },
+    {
+      "name": "renders asset statement",
+      "request": {
+        "template_id": "test.asset_code.v1",
+        "signal_level": "caution",
+        "as_of": "2026-10-26T14:02:31+02:00",
+        "method": "D-ASSET-LOOKALIKE",
+        "ruleset_version": "2026.10.1",
+        "slots": {
+          "asset": { "type": "asset_key", "value": "USDC:GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" },
+          "known_asset": { "type": "asset_key", "value": "USDC:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" }
+        }
+      },
+      "expect": {
+        "text": "TEST ONLY. Asset USDC:GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB uses the same code as USDC:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF. Observed 2026-10-26 12:02 UTC.",
+        "attribution": "Method: D-ASSET-LOOKALIKE, ruleset 2026.10.1. Observed 2026-10-26 12:02 UTC. This is an indicator, not a determination of intent or wrongdoing. Methodology: https://sorosentinel.invalid/methodology. Request a review: https://sorosentinel.invalid/review.",
+        "facts": {
+          "asset": "USDC:GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "known_asset": "USDC:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+          "as_of": "2026-10-26T12:02:31Z"
+        }
+      }
+    },
+    {
+      "name": "domain is normalized before display",
+      "request": {
+        "template_id": "test.domain.v1",
+        "signal_level": "caution",
+        "as_of": "2026-10-26T14:02:00Z",
+        "method": "D-HOMEDOMAIN-MISMATCH",
+        "ruleset_version": "2026.10.1",
+        "slots": {
+          "domain": { "type": "domain", "value": "Example.COM." },
+          "ledger": { "type": "ledger", "value": "123456" }
+        }
+      },
+      "expect": {
+        "text": "TEST ONLY. Domain example.com was checked at ledger 123456.",
+        "attribution": "Method: D-HOMEDOMAIN-MISMATCH, ruleset 2026.10.1. Observed 2026-10-26 14:02 UTC. This is an indicator, not a determination of intent or wrongdoing. Methodology: https://sorosentinel.invalid/methodology. Request a review: https://sorosentinel.invalid/review.",
+        "facts": { "domain": "example.com", "ledger": "123456", "as_of": "2026-10-26T14:02:00Z" }
+      }
+    },
+    {
+      "name": "unknown template fails closed",
+      "request": { "template_id": "test.nope.v1", "signal_level": "caution", "as_of": "2026-10-26T14:02:00Z", "method": "D-X", "ruleset_version": "2026.10.1", "slots": {} },
+      "expect": { "error": "unknown_template" }
+    },
+    {
+      "name": "draft template fails closed",
+      "request": {
+        "template_id": "test.draft.v1", "signal_level": "caution", "as_of": "2026-10-26T14:02:00Z", "method": "D-X", "ruleset_version": "2026.10.1",
+        "slots": { "asset": { "type": "asset_key", "value": "native" } }
+      },
+      "expect": { "error": "not_approved" }
+    },
+    {
+      "name": "draft attribution fails closed",
+      "request": {
+        "template_id": "test.draft_attribution.v1", "signal_level": "caution", "as_of": "2026-10-26T14:02:00Z", "method": "D-X", "ruleset_version": "2026.10.1",
+        "slots": { "asset": { "type": "asset_key", "value": "native" } }
+      },
+      "expect": { "error": "not_approved" }
+    },
+    {
+      "name": "signal level not allowed by template",
+      "request": {
+        "template_id": "test.domain.v1", "signal_level": "consistent", "as_of": "2026-10-26T14:02:00Z", "method": "D-X", "ruleset_version": "2026.10.1",
+        "slots": { "domain": { "type": "domain", "value": "example.com" }, "ledger": { "type": "ledger", "value": "1" } }
+      },
+      "expect": { "error": "level_not_allowed" }
+    },
+    {
+      "name": "missing slot",
+      "request": {
+        "template_id": "test.domain.v1", "signal_level": "caution", "as_of": "2026-10-26T14:02:00Z", "method": "D-X", "ruleset_version": "2026.10.1",
+        "slots": { "domain": { "type": "domain", "value": "example.com" } }
+      },
+      "expect": { "error": "missing_slot" }
+    },
+    {
+      "name": "missing as_of",
+      "request": {
+        "template_id": "test.domain.v1", "signal_level": "caution", "as_of": "", "method": "D-X", "ruleset_version": "2026.10.1",
+        "slots": { "domain": { "type": "domain", "value": "example.com" }, "ledger": { "type": "ledger", "value": "1" } }
+      },
+      "expect": { "error": "missing_slot" }
+    },
+    {
+      "name": "unexpected slot",
+      "request": {
+        "template_id": "test.domain.v1", "signal_level": "caution", "as_of": "2026-10-26T14:02:00Z", "method": "D-X", "ruleset_version": "2026.10.1",
+        "slots": { "domain": { "type": "domain", "value": "example.com" }, "ledger": { "type": "ledger", "value": "1" }, "extra": { "type": "ledger", "value": "2" } }
+      },
+      "expect": { "error": "unexpected_slot" }
+    },
+    {
+      "name": "slot type mismatch",
+      "request": {
+        "template_id": "test.domain.v1", "signal_level": "caution", "as_of": "2026-10-26T14:02:00Z", "method": "D-X", "ruleset_version": "2026.10.1",
+        "slots": { "domain": { "type": "domain", "value": "example.com" }, "ledger": { "type": "domain", "value": "example.org" } }
+      },
+      "expect": { "error": "slot_type_mismatch" }
+    },
+    {
+      "name": "bidi override in untrusted value",
+      "request": {
+        "template_id": "test.domain.v1", "signal_level": "caution", "as_of": "2026-10-26T14:02:00Z", "method": "D-X", "ruleset_version": "2026.10.1",
+        "slots": { "domain": { "type": "domain", "value": "exa‮mple.com" }, "ledger": { "type": "ledger", "value": "1" } }
+      },
+      "expect": { "error": "invalid_slot_value" }
+    },
+    {
+      "name": "free text is not a valid ledger",
+      "request": {
+        "template_id": "test.domain.v1", "signal_level": "caution", "as_of": "2026-10-26T14:02:00Z", "method": "D-X", "ruleset_version": "2026.10.1",
+        "slots": { "domain": { "type": "domain", "value": "example.com" }, "ledger": { "type": "ledger", "value": "visit example.org" } }
+      },
+      "expect": { "error": "invalid_slot_value" }
+    },
+    {
+      "name": "invalid method id",
+      "request": {
+        "template_id": "test.domain.v1", "signal_level": "caution", "as_of": "2026-10-26T14:02:00Z", "method": "free text", "ruleset_version": "2026.10.1",
+        "slots": { "domain": { "type": "domain", "value": "example.com" }, "ledger": { "type": "ledger", "value": "1" } }
+      },
+      "expect": { "error": "invalid_slot_value" }
+    },
+    {
+      "name": "blocked term arriving through an untrusted domain",
+      "request": {
+        "template_id": "test.domain.v1", "signal_level": "caution", "as_of": "2026-10-26T14:02:00Z", "method": "D-X", "ruleset_version": "2026.10.1",
+        "slots": { "domain": { "type": "domain", "value": "fake-example.com" }, "ledger": { "type": "ledger", "value": "1" } }
+      },
+      "expect": { "error": "blocked_term" }
+    }
+  ]
+}
