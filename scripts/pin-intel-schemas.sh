@@ -1,5 +1,5 @@
 #!/bin/sh
-# Pins Intel's shared schema files at a tag (docs/project_structure.md §2.3,
+# Pins Intel's shared schema and wording files at a tag (docs/project_structure.md §2.3,
 # git-tag distribution). Downloads by the tag's commit, which cannot move, and
 # writes intel-schemas/PINNED and intel-schemas/SHA256SUMS. Never edit the
 # pinned files by hand; `make schemas-check` (part of verify) enforces this.
@@ -10,7 +10,7 @@ set -eu
 TAG="${1:?usage: $0 <tag>}"
 REPO="SoroSentinel/Sorosentinel-intel"
 OUT="$(cd "$(dirname "$0")/.." && pwd)/intel-schemas"
-FILES="schemas/vectors/canonical_keys.json schemas/vectors/snapshot_signing.json schemas/jsonschema/Snapshot.json schemas/jsonschema/AnalysisResult.json"
+FILES="schemas/vectors/canonical_keys.json schemas/vectors/snapshot_signing.json schemas/jsonschema/Snapshot.json schemas/jsonschema/AnalysisResult.json wording/vectors/render.json wording/blocklist.yaml"
 
 COMMIT=$(git ls-remote "https://github.com/$REPO" "refs/tags/$TAG^{}" | cut -f1)
 [ -n "$COMMIT" ] || COMMIT=$(git ls-remote "https://github.com/$REPO" "refs/tags/$TAG" | cut -f1)
