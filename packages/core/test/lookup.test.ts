@@ -50,8 +50,9 @@ const withSnapshot = (data: unknown, extra: Partial<AnalyzeContext> = {}): Parti
 });
 
 describe("counterparty lookup", () => {
+  // A payment with a memo needs no SEP-29 lookup, so `analyze` can check it completely.
   it("a verified snapshot with no hits gives the first clean result", () => {
-    const r = run("benign/payment_native.json", withSnapshot(snapshot("public", [])));
+    const r = run("benign/memo_id.json", withSnapshot(snapshot("public", [])));
     expect(r.snapshotStatus).toBe("verified");
     expect(r.notChecked).toEqual(["NC-EXECUTION-TIME"]);
     expect(r.status).toBe("no_issues_found");
@@ -59,7 +60,7 @@ describe("counterparty lookup", () => {
   });
 
   it("a flagged destination account raises G-DEST-FLAGGED", () => {
-    const r = run("benign/payment_native.json", withSnapshot(snapshot("public", [["account", OTHER]])));
+    const r = run("benign/memo_id.json", withSnapshot(snapshot("public", [["account", OTHER]])));
     expect(r.status).toBe("findings_present");
     expect(r.findings).toEqual([
       {

@@ -2,12 +2,14 @@ import type { AnalysisInput } from "../decode/envelope.ts";
 import type { EffectsResult } from "../effects/types.ts";
 import type { CounterpartyHit } from "../intel/lookup.ts";
 
-/** Inputs a rule may read besides the transaction. Rules never read the clock or the network. */
+/** Inputs a rule may read besides the transaction. Rules never read the clock or the network; ledger data is read beforehand and passed in. */
 export interface RuleContext {
   /** Caller-supplied reference time (Unix seconds). Absent means time-relative checks are skipped. */
   asOf?: bigint;
   /** Entities found in a verified Intel snapshot. Absent when no snapshot was used. */
   hits?: CounterpartyHit[];
+  /** Destinations whose SEP-29 data entry requires a memo. Absent when they were not read. */
+  memoRequired?: ReadonlySet<string>;
 }
 
 export type Severity = "critical" | "high" | "medium" | "low" | "info";
@@ -17,6 +19,7 @@ export type FindingCode =
   | "G-ACCOUNT-CONTROL"
   | "G-CONTRACT-FLAGGED"
   | "G-DEST-FLAGGED"
+  | "G-MEMO-REQUIRED"
   | "G-NETWORK-UNKNOWN"
   | "G-NO-EXPIRY"
   | "G-SIGNER-ADDED"

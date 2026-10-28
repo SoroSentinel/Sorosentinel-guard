@@ -3,31 +3,22 @@ import type { Api } from "@stellar/stellar-sdk/rpc";
 
 import { authSummary } from "../decode/operations.ts";
 import type { AuthEntrySummary } from "../decode/types.ts";
+import { DEFAULT_RPC_TIMEOUT_MS, MAX_RPC_TIMEOUT_MS, callRpc, isLedger, isRecord, type RpcConfig } from "../rpc/transport.ts";
 
-// The SDK's rpc.Server cannot take an injected fetch or cap the response
-// size, so Guard calls the JSON-RPC method directly. Field names are checked
-// against the SDK's response type so a rename fails at compile time.
+// Field names are checked against the SDK's response type so a rename fails at compile time.
 type RawSimulation = Api.RawSimulateTransactionResponse;
 
-export const DEFAULT_SIMULATION_TIMEOUT_MS = 10_000;
-export const MAX_SIMULATION_TIMEOUT_MS = 60_000;
+export const DEFAULT_SIMULATION_TIMEOUT_MS = DEFAULT_RPC_TIMEOUT_MS;
+export const MAX_SIMULATION_TIMEOUT_MS = MAX_RPC_TIMEOUT_MS;
 // TODO(verify): largest legitimate simulateTransaction response.
 export const MAX_SIMULATION_RESPONSE_BYTES = 1024 * 1024;
 // TODO(verify): largest legitimate event and state-change counts.
 const MAX_EVENTS = 2_000;
 const MAX_STATE_CHANGES = 2_000;
 
-const REQUEST_ID = 1;
 const INT64_MAX = 2n ** 63n - 1n;
 
-/** RPC endpoint chosen by the integrator. Guard has no default endpoint. */
-export interface RpcConfig {
-  url: string;
-  /** Deadline for the whole exchange (request and response body). */
-  timeoutMs?: number;
-  /** Defaults to the global fetch. */
-  fetch?: typeof fetch;
-}
+export type { RpcConfig };
 
 /** Structured simulation data; carries no RPC-provided prose. */
 export type SimulationOutcome =
@@ -90,123 +81,17 @@ export async function simulateTransaction(envelopeBase64: string, rpc: RpcConfig
 
 /** Like `simulateTransaction`, but also returns the decoded trace of a successful simulation. */
 export async function runSimulation(envelopeBase64: string, rpc: RpcConfig): Promise<Simulated> {
-  const timeoutMs = rpc.timeoutMs ?? DEFAULT_SIMULATION_TIMEOUT_MS;
-  const fetchImpl = rpc.fetch ?? globalThis.fetch;
-  if (!validEndpoint(rpc.url) || !validTimeout(timeoutMs) || typeof fetchImpl !== "function") {
-    return { outcome: { status: "error", reason: "invalid_config" }, trace: null };
-  }
-
-  const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  // Raced rather than relying on the signal alone: an injected fetch may ignore it.
-  const deadline = new Promise<Simulated>((resolve) => {
-    timer = setTimeout(() => {
-      controller.abort();
-      resolve({ outcome: { status: "timeout", timeoutMs }, trace: null });
-    }, timeoutMs);
-  });
-  try {
-    return await Promise.race([exchange(fetchImpl, rpc.url, envelopeBase64, controller.signal), deadline]);
-  } finally {
-    clearTimeout(timer);
-    controller.abort();
-  }
+  const reply = await callRpc(rpc, "simulateTransaction", { transaction: envelopeBase64 }, MAX_SIMULATION_RESPONSE_BYTES);
+  return reply.ok ? parseResponse(reply.result) : { outcome: reply.failure, trace: null };
 }
 
-const failed = (outcome: SimulationOutcome): Simulated => ({ outcome, trace: null });
-
-async function exchange(fetchImpl: typeof fetch, url: string, envelopeBase64: string, signal: AbortSignal): Promise<Simulated> {
-  let response: Response;
-  try {
-    response = await fetchImpl(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: REQUEST_ID, method: "simulateTransaction", params: { transaction: envelopeBase64 } }),
-      signal,
-      credentials: "omit",
-      redirect: "error",
-      referrerPolicy: "no-referrer",
-      cache: "no-store",
-    });
-  } catch {
-    return failed({ status: "error", reason: "network" });
-  }
-  if (!response.ok) {
-    return failed({ status: "error", reason: "http", httpStatus: response.status });
-  }
-  try {
-    const body = await readCapped(response, MAX_SIMULATION_RESPONSE_BYTES);
-    if (!body.ok) return failed({ status: "malformed", reason: body.reason });
-    let json: unknown;
-    try {
-      json = JSON.parse(body.text);
-    } catch {
-      return failed({ status: "malformed", reason: "invalid_json" });
-    }
-    return parseResponse(json);
-  } catch {
-    // Body stream failed (including abort after the deadline).
-    return failed({ status: "error", reason: "network" });
-  }
+function parseResponse(result: Record<string, unknown>): Simulated {
+  const outcome = parseOutcome(result);
+  return outcome.status === "ok" ? { outcome, trace: parseTrace(result) } : { outcome, trace: null };
 }
 
-type Body = { ok: true; text: string } | { ok: false; reason: "too_large" | "invalid_json" };
-
-/** Reads the body as UTF-8, stopping as soon as it exceeds `maxBytes`. */
-async function readCapped(response: Response, maxBytes: number): Promise<Body> {
-  const declared = response.headers.get("content-length");
-  if (declared !== null && /^\d+$/.test(declared) && Number(declared) > maxBytes) {
-    await response.body?.cancel().catch(() => undefined);
-    return { ok: false, reason: "too_large" };
-  }
-  const decoder = new TextDecoder("utf-8", { fatal: true });
-  if (response.body === null) {
-    const text = await response.text();
-    return new TextEncoder().encode(text).byteLength > maxBytes ? { ok: false, reason: "too_large" } : { ok: true, text };
-  }
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxBytes) {
-      await reader.cancel().catch(() => undefined);
-      return { ok: false, reason: "too_large" };
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const c of chunks) {
-    bytes.set(c, offset);
-    offset += c.byteLength;
-  }
-  try {
-    return { ok: true, text: decoder.decode(bytes) };
-  } catch {
-    return { ok: false, reason: "invalid_json" };
-  }
-}
-
-function parseResponse(json: unknown): Simulated {
-  const outcome = parseOutcome(json);
-  if (outcome.status !== "ok" || !isRecord(json) || !isRecord(json["result"])) return { outcome, trace: null };
-  return { outcome, trace: parseTrace(json["result"]) };
-}
-
-function parseOutcome(json: unknown): SimulationOutcome {
+function parseOutcome(result: Record<string, unknown>): SimulationOutcome {
   const malformed: Failure = { status: "malformed", reason: "invalid_shape" };
-  if (!isRecord(json) || json["jsonrpc"] !== "2.0" || json["id"] !== REQUEST_ID) return malformed;
-  if (Object.hasOwn(json, "error")) {
-    const err = json["error"];
-    return isRecord(err) && Number.isSafeInteger(err["code"])
-      ? { status: "error", reason: "rpc", rpcCode: err["code"] as number }
-      : malformed;
-  }
-  const result = json["result"];
-  if (!isRecord(result)) return malformed;
   if (field(result, "error") !== undefined) {
     // Simulation ran and failed; its message is untrusted text and is not kept.
     return typeof field(result, "error") === "string" ? { status: "error", reason: "simulation" } : malformed;
@@ -308,27 +193,6 @@ function stroops(value: unknown): string | null {
   return BigInt(value) <= INT64_MAX ? value : null;
 }
 
-function isLedger(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 0xffffffff;
-}
-
 function field<K extends keyof RawSimulation>(result: Record<string, unknown>, key: K): unknown {
   return Object.hasOwn(result, key) ? result[key] : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function validEndpoint(url: string): boolean {
-  try {
-    const u = new URL(url);
-    return u.protocol === "https:" || u.protocol === "http:";
-  } catch {
-    return false;
-  }
-}
-
-function validTimeout(ms: number): boolean {
-  return Number.isFinite(ms) && ms > 0 && ms <= MAX_SIMULATION_TIMEOUT_MS;
 }
