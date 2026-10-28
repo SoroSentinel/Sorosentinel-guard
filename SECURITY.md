@@ -8,7 +8,9 @@ SoroSentinel Guard is pre-release and **has not been audited**. Do not rely on i
 
 Please do not open a public issue, PR or discussion for a vulnerability.
 
-Report privately through GitHub: **Security** tab → **Report a vulnerability** (private vulnerability reporting), or email TODO-security-contact.
+Report it privately through GitHub's private vulnerability reporting:
+<https://github.com/SoroSentinel/Sorosentinel-guard/security/advisories/new>
+(the **Security** tab → **Report a vulnerability**). If you cannot use GitHub, email TODO-security-contact.
 
 Include:
 
@@ -16,7 +18,16 @@ Include:
 - Steps or an input that reproduces it (a minimal XDR, WASM or request)
 - The commit or version you tested
 
-We aim to acknowledge reports within TODO business days and to agree on a disclosure date with you. Please give us reasonable time to fix the issue before disclosing it.
+## Disclosure process
+
+1. **Acknowledge:** we confirm receipt within 5 business days.
+2. **Assess:** we reproduce the issue, agree its severity with you, and keep you updated at least every 14 days.
+3. **Fix:** we prepare the fix in a private security advisory and, where possible, invite you to review it.
+4. **Disclose:** we publish the advisory, request a CVE where appropriate, and credit you unless you ask us not to.
+
+We aim to release a fix and disclose within 90 days of the report, earlier if a fix ships sooner. If the issue is being exploited, or the 90 days pass without a fix, we will agree on an earlier or later date with you. Please do not disclose before the agreed date.
+
+Only the latest commit on `main` is supported while the project is pre-release.
 
 ## Scope
 
