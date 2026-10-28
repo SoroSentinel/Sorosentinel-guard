@@ -16,8 +16,8 @@ const MAX_PAGES = 500;
 const MAX_TOTAL_BYTES = 256 << 20;
 
 // JSON framing around one record: {"xdr":"…","network_passphrase":"…"} plus a
-// newline. Measured with placeholder values so the byte cap never depends on
-// what the endpoint reports as its passphrase.
+// newline, measured with placeholder values so no reported byte count derives
+// from what the endpoint reports as its passphrase.
 const FRAME_BYTES = JSON.stringify({ xdr: "", network_passphrase: "x".repeat(64) }).length + 1;
 
 interface Options {
@@ -111,7 +111,8 @@ async function main(argv: readonly string[]): Promise<void> {
   const latest = (await server.getLatestLedger()).sequence;
   const start = opts.fromLedger ?? Math.max(1, latest - opts.ledgers);
 
-  const lines: string[] = [];
+  // Envelope XDR only, until the one write that adds the passphrase.
+  const envelopes: string[] = [];
   let written = 0;
   let bytes = 0;
   let pages = 0;
@@ -135,14 +136,11 @@ async function main(argv: readonly string[]): Promise<void> {
         break;
       }
       const xdr = tx.envelopeXdr.toXdr("base64");
-      // Size accounting uses a constant frame, not the rendered line, so no
-      // reported number is derived from the endpoint's passphrase.
-      const line = `${JSON.stringify({ xdr, network_passphrase: passphrase })}\n`;
       if (bytes + xdr.length + FRAME_BYTES > MAX_TOTAL_BYTES) {
         stopped = "max_bytes";
         break;
       }
-      lines.push(line);
+      envelopes.push(xdr);
       written++;
       bytes += xdr.length + FRAME_BYTES;
       low = Math.min(low, tx.ledger);
@@ -158,7 +156,10 @@ async function main(argv: readonly string[]): Promise<void> {
   if (pages >= MAX_PAGES && stopped !== "count") stopped = "max_pages";
 
   mkdirSync(parentOf(opts.out), { recursive: true });
-  writeFileSync(opts.out, lines.join(""));
+  writeFileSync(
+    opts.out,
+    envelopes.map((xdr) => `${JSON.stringify({ xdr, network_passphrase: passphrase })}\n`).join(""),
+  );
   const summary: Summary = {
     requested: opts.count,
     written,
