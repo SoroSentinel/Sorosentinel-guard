@@ -10,7 +10,7 @@ Thanks for helping. This project handles hostile input and makes public statemen
 
 ## Setup
 
-Prerequisites: Node.js 22.12+ and pnpm 10.34.7.
+Prerequisites: Node.js 22.12+ and pnpm 10.34.7 (`corepack enable pnpm` installs the pinned, hash-checked version).
 
 ```bash
 make deps
