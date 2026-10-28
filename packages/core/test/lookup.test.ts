@@ -101,11 +101,12 @@ describe("counterparty lookup", () => {
     expect(r.findings[0]?.facts["roles"]).toBe("balance,source");
   });
 
-  it("a contract call stays partial: contract addresses are not looked up yet", () => {
+  it("an invoked contract is looked up; the call stays partial without simulated effects", () => {
     const r = run("benign/invoke_contract.json", withSnapshot(snapshot("testnet", [])));
     expect(r.snapshotStatus).toBe("verified");
     expect(r.status).toBe("partial");
-    expect(r.notChecked).toContain("NC-COUNTERPARTY-SIGNALS");
+    expect(r.notChecked).not.toContain("NC-COUNTERPARTY-SIGNALS");
+    expect(r.notChecked).toEqual(["NC-EXECUTION-TIME", "NC-OPERATION-EFFECTS", "NC-SIMULATION"]);
   });
 });
 
