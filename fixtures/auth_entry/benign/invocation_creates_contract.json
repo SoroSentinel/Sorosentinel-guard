@@ -1,0 +1,16 @@
+{
+  "name": "invocation_creates_contract",
+  "description": "The tree creates a contract, so there is no existing address to look up",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "xdr": "AAAAAAAAAAEAAAAAAAAAAAAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJAAAAAAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAAAAAA==",
+  "expected": {
+    "credential": "sorobanCredentialsSourceAccount",
+    "address": null,
+    "nonce": null,
+    "signature_expiration_ledger": null,
+    "delegate_signatures": 0,
+    "invocation_nodes": 1,
+    "contracts": [],
+    "contracts_unchecked": true
+  }
+}

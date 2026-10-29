@@ -8,6 +8,22 @@ importers:
 
   .: {}
 
+  packages/adapter-reference:
+    dependencies:
+      '@sorosentinel/guard-core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@stellar/stellar-sdk':
+        specifier: 17.2.1
+        version: 17.2.1
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 5.0.4
+        version: 5.0.4(vite@8.3.4)
+
   packages/core:
     dependencies:
       '@stellar/stellar-sdk':

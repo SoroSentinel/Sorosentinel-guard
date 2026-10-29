@@ -234,9 +234,13 @@ You do not have to build the display yourself. `renderFindings(result, { doc, st
 
 | Path | What |
 |---|---|
-| `packages/core/src/decode/` | Envelope and operation decoder |
+| `packages/core/src/decode/` | Envelope, operation and authorization-entry decoder |
 | `packages/core/scripts/` | Fixture generator, replay harness, latency benchmark |
+| `packages/adapter-reference/` | Reference SEP-43 wallet wrapper: analyze, review, then sign |
 | `fixtures/tx/` | Generated benign and hostile transaction fixtures |
+| `fixtures/auth_entry/` | Generated benign and hostile authorization-entry fixtures |
+| `examples/analyze-transaction/` | Reference host for the four statuses |
+| `examples/wallet-adapter/` | Reference signing flow in front of a stub wallet |
 | `docs/` | Generated copies of the canonical docs (edit them in Intel) |
 
 ## Contributing

@@ -1,0 +1,20 @@
+{
+  "name": "@sorosentinel/guard-adapter-reference",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@sorosentinel/guard-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@stellar/stellar-sdk": "17.2.1",
+    "typescript": "7.0.2",
+    "vitest": "5.0.4"
+  }
+}

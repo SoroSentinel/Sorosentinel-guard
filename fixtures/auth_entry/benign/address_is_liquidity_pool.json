@@ -1,0 +1,21 @@
+{
+  "name": "address_is_liquidity_pool",
+  "description": "Credentials on a liquidity-pool address: reported as hex",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "xdr": "AAAAAQAAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAAAAAAAAAHAExLQAAAAAEAAAAAAAAAAQcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHAAAACHRyYW5zZmVyAAAAAAAAAAA=",
+  "expected": {
+    "credential": "sorobanCredentialsAddress",
+    "address": {
+      "kind": "liquidity_pool",
+      "poolHex": "0404040404040404040404040404040404040404040404040404040404040404"
+    },
+    "nonce": "7",
+    "signature_expiration_ledger": 5000000,
+    "delegate_signatures": 0,
+    "invocation_nodes": 1,
+    "contracts": [
+      "CADQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQP5KR"
+    ],
+    "contracts_unchecked": false
+  }
+}

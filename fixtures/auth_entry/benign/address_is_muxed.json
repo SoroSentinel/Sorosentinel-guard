@@ -1,0 +1,22 @@
+{
+  "name": "address_is_muxed",
+  "description": "Credentials on an M… address: reported as its G… key and id",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "xdr": "AAAAAQAAAAIAAAAAAAAAKgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAAAAAAAAAAcATEtAAAAAAQAAAAAAAAABBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcAAAAIdHJhbnNmZXIAAAAAAAAAAA==",
+  "expected": {
+    "credential": "sorobanCredentialsAddress",
+    "address": {
+      "kind": "account",
+      "account": "GABAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEJXA",
+      "muxedId": "42"
+    },
+    "nonce": "7",
+    "signature_expiration_ledger": 5000000,
+    "delegate_signatures": 0,
+    "invocation_nodes": 1,
+    "contracts": [
+      "CADQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQP5KR"
+    ],
+    "contracts_unchecked": false
+  }
+}
