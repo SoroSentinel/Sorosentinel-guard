@@ -10,6 +10,9 @@ export { analyze, analyzeAsync } from "./analyze.ts";
 export type { AnalysisResult, AnalysisStatus, AnalyzeContext, CounterpartyHit, NotChecked, SnapshotStatus } from "./analyze.ts";
 export type { Finding, FindingCode, Severity } from "./rules/types.ts";
 export { MAX_DISPLAY_LENGTH, escapeHtml, sanitizeHexBytes, sanitizeUntrusted } from "./wording/sanitize.ts";
+export type { RenderResult, Statement } from "./wording/render.ts";
+export { DEFAULT_LABELS, renderFindings } from "./ui/findings.ts";
+export type { FindingsLabels, FindingsOptions } from "./ui/findings.ts";
 export {
   DEFAULT_SIMULATION_TIMEOUT_MS,
   MAX_SIMULATION_RESPONSE_BYTES,
