@@ -197,6 +197,8 @@ Priority: **P0** = required for v1 launch, **P1** = v1.x, **P2** = later.
 
 Timeline estimates are intentionally omitted: they depend on team size, which is unknown.
 
+Phase 2 and 3 scope was approved on 2026-10-29 (ADR 0007). It starts after the Phase 1 exit criterion is met.
+
 ## 10. Competitive / landscape notes
 
 - Soroban security tooling already exists: Scout (CoinFabrik, static analysis on Rust source), Certora Sunbeam (formal verification on Wasm), Almanax (LLM-based). Stellar also funds audits through the Soroban Security Audit Bank. [Certain]
