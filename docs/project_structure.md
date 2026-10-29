@@ -225,24 +225,32 @@ sorosentinel-guard/
 │
 ├── packages/
 │   ├── core/                  # @sorosentinel/guard-core  (the SDK)
-│   │   └── src/
-│   │       ├── analyze.ts     # analyze(xdr, ctx) → AnalysisResult
-│   │       ├── decode/        # envelope, fee-bump, per-operation decoders, soroban auth entries/credentials
-│   │       ├── effects/       # per-account effects, bounds (min/max), assurance (ledger | contract_reported)
-│   │       ├── rules/         # one file per finding code (G-*), severity ordering
-│   │       ├── simulate/      # RPC simulateTransaction wrapper, timeouts → partial
-│   │       ├── intel/         # snapshot fetch/verify (Ed25519), local lookup, API fallback
-│   │       ├── canonical/     # canonical key encoding (must pass shared vectors)
-│   │       ├── wording/       # renderer + compiled templates (from @sorosentinel/wording), sanitizers
-│   │       └── types.ts       # generated types re-exported from @sorosentinel/schemas
-│   └── adapter-reference/     # one reference wallet adapter (wraps a signTransaction-style call)
+│   │   ├── src/
+│   │   │   ├── index.ts       # the package's public surface
+│   │   │   ├── analyze.ts     # analyze(xdr, ctx) → AnalysisResult
+│   │   │   ├── assert-never.ts# the exhaustive-switch guard for protocol unions
+│   │   │   ├── decode/        # envelope, fee-bump, per-operation decoders, soroban auth entries/credentials
+│   │   │   ├── effects/       # per-account effects, bounds (min/max), assurance (ledger | contract_reported)
+│   │   │   ├── memo/          # SEP-29 memo-required destination lookup
+│   │   │   ├── rpc/           # the transport callers, tests and the example inject
+│   │   │   ├── rules/         # one file per finding code (G-*), severity ordering
+│   │   │   ├── simulate/      # RPC simulateTransaction wrapper, timeouts → partial
+│   │   │   ├── intel/         # snapshot fetch/verify (Ed25519), local lookup, API fallback
+│   │   │   ├── canonical/     # canonical key encoding (must pass shared vectors)
+│   │   │   ├── wording/       # renderer + compiled templates (from @sorosentinel/wording), sanitizers
+│   │   │   └── ui/            # reference findings view: plain DOM, writes no prose of its own
+│   │   ├── types/             # node-shim.d.ts: the Node built-ins `test/` and `scripts/` may use; `src/` must not
+│   │   ├── scripts/           # gen-fixtures, replay, export-rpc-txs, demo-findings
+│   │   └── test/              # unit tests, plus `test/contract/` = the pinned shared vectors
+│   └── adapter-reference/     # planned, not built: one reference wallet adapter (wraps a signTransaction-style call)
 │
+├── intel-schemas/             # Intel's pinned schemas, wording vectors, blocklist + SHA256SUMS
 ├── fixtures/
 │   ├── tx/benign/             # *.json: {xdr, network, signer, expected}
 │   ├── tx/hostile/            # padding, hashX signer, no time bounds, memo-required, fee-bump, muxed, unknown network
 │   └── snapshots/             # signed test snapshots (test keys only)
-├── contract-tests/            # against pinned schema + snapshot vectors
-├── examples/                  # minimal usage sample
+├── examples/                  # minimal usage sample (the reference integrator)
+├── scripts/                   # repo scripts
 └── docs/                      # generated copies from Intel
 ```
 
@@ -250,6 +258,7 @@ sorosentinel-guard/
 - **Not a server.** No deployable in v1; the artifact is an npm package.
 - One fixture per operation/credential type, enforced by a test that enumerates the XDR enum and fails if a case has no fixture.
 - The renderer here is a **second implementation** of Intel's renderer (needed offline). Both must pass `wording/vectors/`.
+- `ui/` writes no prose: sentences arrive only through the injected renderer hook, and a missing or failed render degrades to the finding's structured facts (AGENTS.md §5). It takes `Document` as an option and uses `createTextNode`, never `innerHTML`, so it needs no DOM dependency and is testable without a browser. Approved display rules live there, not in each integrator's copy.
 - Test keys used for fixtures are clearly labeled and never valid for production.
 
 ---
@@ -282,6 +291,7 @@ This is slower than a monorepo; it is the cost of three repos. Pre-release build
 | New public wording | `intel/wording/templates/en/` + vectors + `wordlint` pass; **separate PR; counsel review** |
 | New Guard finding code | `guard/packages/core/src/rules/` + template in Intel + fixture(s) under `guard/fixtures/tx/` |
 | New operation/credential decoder | `guard/packages/core/src/decode/` + fixture + (if effects) `effects/` |
+| New or changed Guard display rule (order, truncation, wording fallback) | `guard/packages/core/src/ui/` + a structure test in `packages/core/test/ui-findings.test.ts` + re-open the generated page (`packages/core/scripts/demo-findings.ts`) in a browser to re-check focus order and the accessibility tree |
 | New Scan indicator | `scan/crates/scan-core/src/detectors/` + fixture + expected JSON; indicator enum change goes through `intel/schemas/` first |
 | New schema field/endpoint | `intel/schemas/` (additive) → `make gen` → publish → consumers bump |
 | DB change | `intel/migrations/NNNN_*.sql` (forward-only) + migration test |

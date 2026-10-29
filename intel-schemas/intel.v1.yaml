@@ -1,0 +1,91 @@
+openapi: 3.1.0
+info:
+  title: SoroSentinel Intel API
+  version: 0.1.0-next.0
+  description: >
+    Phase 0 skeleton. Endpoints from ARCHITECTURE.md §4.5 that are in v1 scope.
+    Reports, disputes, webhooks and scan callbacks are out of v1 scope.
+# TODO: servers, API-key security scheme, rate-limit headers, error schema.
+paths:
+  /v1/entities/{type}/{id}:
+    get:
+      operationId: getEntity
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema: { $ref: '../jsonschema/common.json#/$defs/entityType' }
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: '../jsonschema/common.json#/$defs/canonicalKey' }
+        - name: network
+          in: query
+          required: true
+          schema: { $ref: '../jsonschema/common.json#/$defs/network' }
+      responses:
+        '200':
+          description: Signal and facts for the entity. Unknown entities return no_signals, never an error-free assurance.
+          content:
+            application/json:
+              schema: { $ref: '../jsonschema/EntitySignal.json' }
+  /v1/entities:batchGet:
+    post:
+      operationId: batchGetEntities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entities]
+              properties:
+                entities:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items: { $ref: '../jsonschema/Entity.json' }
+      responses:
+        '200':
+          description: One EntitySignal per requested entity, in request order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: '../jsonschema/EntitySignal.json' }
+  /v1/snapshots/latest:
+    get:
+      operationId: getLatestSnapshot
+      parameters:
+        - name: network
+          in: query
+          required: true
+          schema: { $ref: '../jsonschema/common.json#/$defs/network' }
+      responses:
+        '200':
+          description: Latest signed snapshot.
+          content:
+            application/json:
+              schema: { $ref: '../jsonschema/Snapshot.json' }
+  /v1/snapshots/{version}:
+    get:
+      operationId: getSnapshot
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: network
+          in: query
+          required: true
+          schema: { $ref: '../jsonschema/common.json#/$defs/network' }
+      responses:
+        '200':
+          description: A specific signed snapshot.
+          content:
+            application/json:
+              schema: { $ref: '../jsonschema/Snapshot.json' }

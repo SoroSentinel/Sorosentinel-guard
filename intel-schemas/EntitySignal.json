@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sorosentinel:schema:v1:EntitySignal",
+  "title": "EntitySignal",
+  "description": "Public lookup response for one entity. Public fields are an allowlist: internal verdict fields (level, rationale, analyst notes) are never part of this schema.",
+  "type": "object",
+  "required": ["entity", "signal_level", "as_of", "facts", "statements"],
+  "additionalProperties": false,
+  "properties": {
+    "entity": { "$ref": "urn:sorosentinel:schema:v1:Entity" },
+    "signal_level": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/signalLevel" },
+    "as_of": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/timestamp" },
+    "ruleset_version": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/rulesetVersion" },
+    "disputed": { "type": "boolean" },
+    "facts": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/facts" },
+    "statements": {
+      "description": "Empty when rendering failed closed; facts are still present.",
+      "type": "array",
+      "items": { "$ref": "urn:sorosentinel:schema:v1:PublicStatement" }
+    }
+  }
+}

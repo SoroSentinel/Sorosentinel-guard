@@ -34,7 +34,7 @@ Data flows Scan → Intel → signed snapshot/API → Guard. The repos only talk
 
 ## Status
 
-Phase 1 complete in code. `analyze()` / `analyzeAsync()` decode exactly the signed bytes, derive per-account balance and account effects (worst case first), simulate Soroban calls through a caller-supplied RPC endpoint, verify Intel's signed snapshot and look up counterparties, and report findings: G-ACCOUNT-CONTROL, G-SIGNER-ADDED, G-NO-EXPIRY, G-NETWORK-UNKNOWN, G-MEMO-REQUIRED, G-DEST-FLAGGED, G-TRUST-FLAGGED, G-CONTRACT-FLAGGED. Findings carry facts only until their wording is counsel-approved. Experiment E2 has run over 12,000 real testnet transactions: all decoded, none `unanalyzable`. Not yet: the Protocol 30 SDK upgrade and the same replay over mainnet traffic, which needs a reachable public mainnet RPC endpoint.
+Phase 1 complete in code. `analyze()` / `analyzeAsync()` decode exactly the signed bytes, derive per-account balance and account effects (worst case first), simulate Soroban calls through a caller-supplied RPC endpoint, verify Intel's signed snapshot and look up counterparties, and report findings: G-ACCOUNT-CONTROL, G-SIGNER-ADDED, G-NO-EXPIRY, G-NETWORK-UNKNOWN, G-MEMO-REQUIRED, G-DEST-FLAGGED, G-TRUST-FLAGGED, G-CONTRACT-FLAGGED. Findings carry facts only until their wording is counsel-approved. Experiment E2 has run over 12,000 real mainnet transactions and 12,000 testnet ones: all decoded, none `unanalyzable`. Not yet: the Protocol 30 SDK upgrade, and E2's benign-warning rate, which needs the labeled corpus.
 
 ## Quick start
 
@@ -53,6 +53,8 @@ make verify
 | `make test` | Vitest |
 | `make gen` | Regenerate `fixtures/tx` (never edit fixtures by hand) |
 | `make replay FILE=txs.jsonl` | Decode a file of transactions and print aggregate stats |
+| `make bench` | Measure `analyze` latency against the PRD §7 targets (local path only, no network) |
+| `make bench RPC=https://…` | Also measure the end-to-end path with RPC simulation; sends invocation envelopes to that endpoint |
 | `node packages/core/scripts/export-rpc-txs.ts --url …` | Export recent transactions from an RPC endpoint for `make replay` (writes the gitignored `replay/`) |
 
 ## Wallet integrator guide
@@ -225,7 +227,7 @@ When it does, the call is `Renderer.create(registry, { methodologyUrl, reviewUrl
 | Path | What |
 |---|---|
 | `packages/core/src/decode/` | Envelope and operation decoder |
-| `packages/core/scripts/` | Fixture generator and replay harness |
+| `packages/core/scripts/` | Fixture generator, replay harness, latency benchmark |
 | `fixtures/tx/` | Generated benign and hostile transaction fixtures |
 | `docs/` | Generated copies of the canonical docs (edit them in Intel) |
 

@@ -11,6 +11,9 @@ declare module "node:fs" {
 
 declare module "node:os" {
   export function tmpdir(): string;
+  export function platform(): string;
+  export function arch(): string;
+  export function cpus(): readonly { model: string }[];
 }
 
 declare module "node:child_process" {
@@ -24,5 +27,8 @@ declare module "node:child_process" {
 declare const process: {
   readonly argv: string[];
   readonly execPath: string;
+  readonly version: string;
+  readonly env: Readonly<Record<string, string | undefined>>;
   exitCode: number | undefined;
+  exit(code: number): never;
 };

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sorosentinel:schema:v1:Entity",
+  "title": "Entity",
+  "type": "object",
+  "required": ["network", "type", "key"],
+  "additionalProperties": false,
+  "properties": {
+    "network": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/network" },
+    "type": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/entityType" },
+    "key": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/canonicalKey" }
+  }
+}
