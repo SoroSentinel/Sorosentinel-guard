@@ -50,6 +50,8 @@ Items in the docs marked **verify** are *unverified facts*. Don't build on them 
 
 Numeric weight×trust×decay scoring · Redis · partitioned evidence table · Scan as an HTTP service/job table/callbacks · snapshot deltas, bloom/cuckoo filters, truncated-hash "confirm" step, key manifest · DB-held wording templates/locales · `entity_link` relations other than `sac_of` · report/dispute/webhook tables · distributed tracing · browser extension, origin checks, local-only mode · dynamic analysis, fuzzy similarity, partner imports · non-English text.
 
+**Approved for after v1 (ADR 0007):** the PRD Phase 2 and 3 items (reports, disputes, feeds, origin check, local-only mode, fuzzy similarity, extension, dynamic analysis, lookup page, partner imports). They start only after the Phase 1 exit; until then this list stands, and each PR still asks first per §10.
+
 **Parked (ADR 0003):** Repo Guard, the Stellar-specific GitHub Action in PRD §15. Do not build it, or open issues or templates for it, until the Phase 1 exit test passes.
 
 **Decided (ADR 0002):** Phase 1 slice = Guard effect analysis + minimal Intel (look-alike and home-domain detectors only). **Still open (don't pre-empt):** defer Scan beyond a minimal library until the labeled-corpus experiment (E3) shows signal.
