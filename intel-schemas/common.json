@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sorosentinel:schema:v1:common",
+  "title": "Shared definitions",
+  "$defs": {
+    "network": {
+      "description": "Networks with Intel coverage. Anything else is reported as unknown (partial), never as no_signals.",
+      "enum": ["public", "testnet"]
+    },
+    "entityType": {
+      "enum": ["account", "asset", "contract", "wasm_hash", "domain"]
+    },
+    "signalLevel": {
+      "description": "Public signal names. Internal levels (benign/unknown/suspicious/malicious) never appear in any schema.",
+      "enum": ["consistent", "no_signals", "caution", "high_caution"]
+    },
+    "stroops": {
+      "description": "Signed integer amount in stroops (7-decimal fixed point), as a decimal string so 64-bit values survive JavaScript.",
+      "type": "string",
+      "pattern": "^-?(0|[1-9][0-9]{0,18})$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sha256Hex": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "rulesetVersion": {
+      "type": "string",
+      "pattern": "^[0-9]{4}\\.[0-9]{2}\\.[0-9]+$"
+    },
+    "canonicalKey": {
+      "description": "Entity key in canonical form (schemas/canonical-key.md).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "facts": {
+      "description": "Structured, verifiable slot values. Values are plain strings; consumers must not linkify them.",
+      "type": "object",
+      "additionalProperties": { "type": "string", "maxLength": 512 }
+    }
+  }
+}
