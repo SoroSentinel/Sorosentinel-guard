@@ -10,11 +10,17 @@ export type AssetRole = "balance" | "trustline";
 /** `invoked`: called by the transaction. `balance`: holds a balance that changes. `token`: a non-SAC token whose balances change. */
 export type ContractRole = "invoked" | "balance" | "token";
 
+/** The entity types Guard asks Intel about; a transaction never touches a `wasm_hash` or a `domain`. */
+export type HitType = "account" | "asset" | "contract";
+
 /** An entity in the transaction that appears in the verified snapshot. */
 export type CounterpartyHit =
   | { type: "account"; key: string; roles: AccountRole[] }
   | { type: "asset"; key: string; roles: AssetRole[] }
   | { type: "contract"; key: string; roles: ContractRole[] };
+
+/** `type` and `roles` are tied by construction in `eachEntity`; the union has no form TypeScript can infer here. */
+type EntityParts = { type: HitType; key: string; roles: string[] };
 
 export interface Entities {
   accounts: Map<string, Set<AccountRole>>;
@@ -109,24 +115,36 @@ export function lookup(
   network: "public" | "testnet",
   entries: ReadonlySet<string>,
 ): { hits: CounterpartyHit[]; unresolved: number } {
-  const hits: CounterpartyHit[] = [];
   let unresolved = 0;
-  const check = (type: "account" | "asset" | "contract", key: string): boolean | null => {
+  const hits: CounterpartyHit[] = [];
+  for (const e of eachEntity(entities)) {
     try {
-      return entries.has(snapshotHash(canonicalKey(network, type, key)));
+      if (entries.has(snapshotHash(canonicalKey(network, e.type, e.key)))) hits.push(hit(e));
     } catch {
       unresolved++;
-      return null;
     }
-  };
-  for (const [key, roles] of [...entities.accounts].sort(([a], [b]) => (a < b ? -1 : 1))) {
-    if (check("account", key)) hits.push({ type: "account", key, roles: [...roles].sort() });
-  }
-  for (const [key, roles] of [...entities.assets].sort(([a], [b]) => (a < b ? -1 : 1))) {
-    if (check("asset", key)) hits.push({ type: "asset", key, roles: [...roles].sort() });
-  }
-  for (const [key, roles] of [...entities.contracts].sort(([a], [b]) => (a < b ? -1 : 1))) {
-    if (check("contract", key)) hits.push({ type: "contract", key, roles: [...roles].sort() });
   }
   return { hits, unresolved };
+}
+
+/** The entities Intel flags, with the roles the transaction gives them. */
+export function flaggedHits(entities: Entities, flagged: ReadonlySet<string>): CounterpartyHit[] {
+  return eachEntity(entities)
+    .filter((e) => flagged.has(`${e.type}|${e.key}`))
+    .map(hit);
+}
+
+/** Every entity, accounts then assets then contracts, each group sorted by key: the order both lookups report in. */
+export function eachEntity(entities: Entities): EntityParts[] {
+  const collect = <R extends string>(type: HitType, map: ReadonlyMap<string, ReadonlySet<R>>): EntityParts[] =>
+    [...map].sort(([a], [b]) => (a < b ? -1 : 1)).map(([key, roles]) => ({ type, key, roles: [...roles].sort() }));
+  return [
+    ...collect("account", entities.accounts),
+    ...collect("asset", entities.assets),
+    ...collect("contract", entities.contracts),
+  ];
+}
+
+function hit(e: EntityParts): CounterpartyHit {
+  return { type: e.type, key: e.key, roles: e.roles } as CounterpartyHit;
 }
