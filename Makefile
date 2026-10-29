@@ -3,7 +3,7 @@
 
 PNPM ?= pnpm
 
-.PHONY: deps fmt lint test test-contract gen fixtures-check schemas-check pin-schemas replay verify
+.PHONY: deps fmt lint test test-contract gen fixtures-check schemas-check pin-schemas replay bench verify
 
 deps:
 	$(PNPM) install --frozen-lockfile
@@ -46,5 +46,11 @@ MAX_RATE ?= 0.02
 replay:
 	@test -n "$(FILE)" || { echo "usage: make replay FILE=<txs.jsonl> [MAX_RATE=0.02]"; exit 2; }
 	cd packages/core && node scripts/replay.ts "$(abspath $(FILE))" --max-unanalyzable-rate $(MAX_RATE)
+
+# PRD §7 latency: make bench [N=200] [RPC=https://endpoint]. The RPC path is opt-in
+# because it egresses to the endpoint; without it only the local path is measured.
+N ?= 200
+bench:
+	cd packages/core && node scripts/bench.ts --n $(N) $(if $(RPC),--rpc "$(RPC)",)
 
 verify: lint test test-contract fixtures-check

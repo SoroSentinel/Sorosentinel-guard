@@ -53,6 +53,8 @@ make verify
 | `make test` | Vitest |
 | `make gen` | Regenerate `fixtures/tx` (never edit fixtures by hand) |
 | `make replay FILE=txs.jsonl` | Decode a file of transactions and print aggregate stats |
+| `make bench` | Measure `analyze` latency against the PRD §7 targets (local path only, no network) |
+| `make bench RPC=https://…` | Also measure the end-to-end path with RPC simulation; sends invocation envelopes to that endpoint |
 | `node packages/core/scripts/export-rpc-txs.ts --url …` | Export recent transactions from an RPC endpoint for `make replay` (writes the gitignored `replay/`) |
 
 ## Repository layout
@@ -60,7 +62,7 @@ make verify
 | Path | What |
 |---|---|
 | `packages/core/src/decode/` | Envelope and operation decoder |
-| `packages/core/scripts/` | Fixture generator and replay harness |
+| `packages/core/scripts/` | Fixture generator, replay harness, latency benchmark |
 | `fixtures/tx/` | Generated benign and hostile transaction fixtures |
 | `docs/` | Generated copies of the canonical docs (edit them in Intel) |
 
