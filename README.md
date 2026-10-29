@@ -8,7 +8,7 @@
 ![Stellar](https://img.shields.io/badge/Stellar-Soroban-black)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-Guard is a TypeScript SDK that a wallet calls just before a user signs. It decodes the exact transaction bytes being signed, works out what each operation does to each account (balances, signers, trustlines, contract authorizations), checks counterparties against SoroSentinel's signed snapshot, and returns findings ordered by severity. It never sees private keys and never reports a transaction as "safe": the best result is "no issues found" plus a list of what was not checked.
+Guard is a TypeScript SDK that a wallet calls just before a user signs. It decodes the exact transaction bytes being signed, works out what each operation does to each account (balances, signers, trustlines, contract authorizations), checks counterparties against SoroSentinel's signed snapshot, or Intel's API when no snapshot settled them, and returns findings ordered by severity. It never sees private keys and never reports a transaction as "safe": the best result is "no issues found" plus a list of what was not checked.
 
 Part of **SoroSentinel**, security tooling for the Stellar ecosystem. It advises; it never controls the network and never touches private keys.
 
@@ -34,7 +34,7 @@ Data flows Scan → Intel → signed snapshot/API → Guard. The repos only talk
 
 ## Status
 
-Phase 1 complete in code. `analyze()` / `analyzeAsync()` decode exactly the signed bytes, derive per-account balance and account effects (worst case first), simulate Soroban calls through a caller-supplied RPC endpoint, verify Intel's signed snapshot and look up counterparties, and report findings: G-ACCOUNT-CONTROL, G-SIGNER-ADDED, G-NO-EXPIRY, G-NETWORK-UNKNOWN, G-MEMO-REQUIRED, G-DEST-FLAGGED, G-TRUST-FLAGGED, G-CONTRACT-FLAGGED. Findings carry facts only until their wording is counsel-approved. Experiment E2 has run over 12,000 real mainnet transactions and 12,000 testnet ones: all decoded, none `unanalyzable`. Not yet: the Protocol 30 SDK upgrade, and E2's benign-warning rate, which needs the labeled corpus.
+Phase 1 complete in code. `analyze()` / `analyzeAsync()` decode exactly the signed bytes, derive per-account balance and account effects (worst case first), simulate Soroban calls through a caller-supplied RPC endpoint, verify Intel's signed snapshot and look up counterparties — or ask Intel's read API when no snapshot settled them — and report findings: G-ACCOUNT-CONTROL, G-SIGNER-ADDED, G-NO-EXPIRY, G-NETWORK-UNKNOWN, G-MEMO-REQUIRED, G-DEST-FLAGGED, G-TRUST-FLAGGED, G-CONTRACT-FLAGGED. Findings carry facts only until their wording is counsel-approved. Experiment E2 has run over 12,000 real mainnet transactions and 12,000 testnet ones: all decoded, none `unanalyzable`. Not yet: the Protocol 30 SDK upgrade, and E2's benign-warning rate, which needs the labeled corpus.
 
 ## Quick start
 
@@ -59,7 +59,7 @@ make verify
 
 ## Wallet integrator guide
 
-A step-by-step path from a fresh clone to a signing prompt. Every command and every output below was run on 2026-10-29 against Node 26 (CI runs Node 24) at commit `3171b6a`, following this text with nothing but the repository checked out.
+A step-by-step path from a fresh clone to a signing prompt. Every command and every output below was run on 2026-10-29 against Node 26 (CI runs Node 24) with `main` at commit `1e894b1`, following this text with nothing but the repository checked out.
 
 ### What Guard never does
 
@@ -68,11 +68,11 @@ Worth stating before the setup steps, because a wallet's threat model depends on
 | Guard never… | Which means |
 |---|---|
 | touches a private key | It accepts an envelope — usually unsigned — and returns a struct. It does not sign, submit, or block anything. The decision stays with the user. |
-| phones home | `analyze()` makes **no** network calls at all. `analyzeAsync()` calls only the RPC endpoint *you* configure. There is no telemetry, no analytics, no default endpoint baked in. |
+| phones home | `analyze()` makes **no** network calls at all. `analyzeAsync()` calls only the endpoints *you* configure: the RPC endpoint, and Intel's API if you set `intel`. There is no telemetry, no analytics, no default endpoint baked in. |
 | says "safe" | The best status is `no_issues_found`, always alongside `notChecked`: what was not examined is part of the answer. |
 | truncates findings | All findings, most severe first. A host that shows the top three has thrown away the guarantee. |
 | reads the clock | `asOf` comes from the caller, so the same `(input, asOf, ruleset)` gives the same result. Omit it and time-relative checks are skipped, not guessed. |
-| sends your transaction anywhere | Counterparty checks run against a snapshot file you already downloaded. Nothing leaves the device unless you configure `rpc`. |
+| sends your transaction anywhere | Counterparty checks run against a snapshot file you already downloaded. Nothing leaves the device unless you configure `rpc` or `intel`, and even `intel` sends only the entity keys it is asking about — never the transaction, its XDR or its hash. |
 
 ### 1. Install
 
@@ -127,16 +127,19 @@ network: public
 operations: 1
 snapshot: verified
 effects: 1
+  GCFIRY65… native delta_min=-100 delta_max=0 assurance=ledger
 findings: 1
-  critical G-SIGNER-ADDED op=0 account=… signer=… signer_type=hash_x weight=1
+  critical G-SIGNER-ADDED op=0 account=GCFIRY65… signer=XAEQSCIJ… signer_type=hash_x weight=1
 not_checked: NC-EXECUTION-TIME
 ```
+
+Every field above is verbatim except the two account strings and the hash-x signer, which are the fixture's own test-vector keys and are shown elided here so the guide never reads like it is carrying a real user's address. Compare the prefixes and the numbers; `delta_min=-100` is the worst case in stroops, and it is the line that tells a wallet how much the transaction can take.
 
 Drop `--as-of` and the same command prints `snapshot: stale`, `status: partial` and `not_checked: NC-COUNTERPARTY-SIGNALS, NC-EXECUTION-TIME` — the vector's snapshot was generated 2026-10-27 and the default `asOf` is now. That is the behaviour you have to reproduce in your own UI, so it is worth seeing deliberately.
 
 ### 3. Configure a call
 
-`analyze(xdr, ctx)` takes three things in `ctx`, and each one is a decision you have to make:
+`analyze(xdr, ctx)` takes one `ctx`, and every field in it is a decision you have to make:
 
 ```ts
 import { analyze, analyzeAsync } from "./packages/core/src/index.ts";
@@ -147,6 +150,7 @@ const ctx: AnalyzeContext = {
   asOf: new Date(),
   snapshot: { data: snapshotJson, pinnedKeys: { "key-id": publicKeyBytes } },
   rpc: { url: "https://rpc.example", timeoutMs: 5_000 },   // analyzeAsync only
+  intel: { url: "https://intel.example" },                  // analyzeAsync only, optional
 };
 ```
 
@@ -156,7 +160,9 @@ const ctx: AnalyzeContext = {
 | `asOf` | Caller-supplied reference time. Required for a snapshot to be consulted at all: without it `snapshotStatus` is `no_as_of` and counterparties go unchecked. |
 | `snapshot.pinnedKeys` | Map of key id → 32 raw public key bytes, pinned in **your** build. A snapshot whose `key_id` is not in the map is not used. Guard verifies the Ed25519 signature itself; it never trusts an unsigned snapshot. |
 | `snapshot.maxAgeSeconds` | Optional; defaults to 3600. Past it, `snapshotStatus: "stale"` — surface that as "protection data stale", not as silence. |
-| `rpc.url` | The only address `analyzeAsync` will contact. HTTPS enforced. Nothing else receives data. |
+| `rpc.url` | The endpoint `analyzeAsync` contacts for simulation and SEP-29 lookups. HTTPS enforced. Nothing else receives data. |
+| `intel.url` | Optional. Intel's read API, used by `analyzeAsync` **only** when no snapshot settled the counterparties — a fresh snapshot that named every entity is the answer, and nothing is sent. HTTPS is enforced here too, and more strictly: a snapshot carries a signature, an API reply does not, so transport integrity is the only thing that says the answer came from Intel. Guard sends one `POST /v1/entities:batchGet` with the network, type and key of each counterparty (100 at most) and nothing else. Any timeout, HTTP error or unexpected reply leaves `NC-COUNTERPARTY-SIGNALS`: the fallback can only add findings, never remove the gap. |
+| `intel.timeoutMs` | Same transport rules as `rpc`: default 10 s, refused above 60 s rather than truncated. |
 
 Fetch a snapshot from Intel — `network` is a **required** query parameter (`schemas/openapi/intel.v1.yaml` in Intel, `/v1/snapshots/latest`, operation `getLatestSnapshot`):
 
@@ -203,6 +209,8 @@ So the fail-closed path is not a hypothetical you should defend against later; i
 
 When it does, the call is `Renderer.create(registry, { methodologyUrl, reviewUrl }).render({ templateId, severity, asOf, method, rulesetVersion, slots })`, with `slotValue(type, raw)` for typed slots. There is deliberately no free-text slot type.
 
+You do not have to build the display yourself. `renderFindings(result, { doc, statementFor?, labels?, headingLevel? })` from `packages/core/src/ui/findings.ts` (exported from the package index) is the reference view for PRD G-12: one plain-DOM `<section role="region">` that writes **no prose of its own**. Its only text is field names (`DEFAULT_LABELS`, overridable), every value reaches the DOM through `createTextNode` after `sanitizeUntrusted`, nothing untrusted becomes a link, and `assurance` is shown as the code rather than as "ledger" when it is not. Omit `statementFor`, or let a render fail, and it falls back to the finding's structured facts — which is what the draft-template state above produces. `node packages/core/scripts/demo-findings.ts` writes a page of every display state (many operations, a critical finding, an unbounded delta, a merge) under `$TMPDIR` — pass a path to choose one, `--with-wording` to render the templates — so you can read the markup in a browser; `packages/core/test/ui-findings.test.ts` is the executable version of the contract.
+
 ### 6. Data handling in your UI
 
 - **Amounts are `bigint` stroops** — 7 decimal fixed point, never a float. `deltaMax: null` means *unbounded*, which is the case a user most needs to see; show the worst side first ("up to X").
@@ -217,9 +225,9 @@ When it does, the call is `Renderer.create(registry, { methodologyUrl, reviewUrl
 - [ ] A non-`verified` `snapshotStatus` is surfaced — `stale` in particular is the "protection data stale" state, not a silent downgrade.
 - [ ] Every finding renders, with `operationCount` and `txHash` (for a fee bump, the inner hash — the one that is actually signed).
 - [ ] Your build pins the snapshot key id and public key, and you have a plan for rotation.
-- [ ] The RPC endpoint is one you configure and audit; nothing else leaves the device.
+- [ ] The RPC endpoint is one you configure and audit, and so is `intel` if you set it; nothing else leaves the device.
 - [ ] Amounts are `bigint`, worst case first, and `assurance` is distinguished.
-- [ ] Untrusted strings are sanitized; no wording of your own describes a transaction.
+- [ ] Untrusted strings are sanitized; no wording of your own describes a transaction. If you render the view rather than use `renderFindings`, `packages/core/test/ui-findings.test.ts` lists what it already guarantees.
 - [ ] `make verify` passes in your fork, and Intel's pinned vectors still pass (they are the contract).
 
 ## Repository layout
