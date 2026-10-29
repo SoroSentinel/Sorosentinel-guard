@@ -31,7 +31,7 @@ ran and the signing did not complete as analyzed (`not_signed` or
 ```text
 analysis: status=partial findings=0 not_checked=NC-COUNTERPARTY-SIGNALS, NC-EXECUTION-TIME, NC-MEMO-REQUIRED
 review: approving (--approve to let the wallet be asked)
-wallet: signTransaction asked for 288 base64 chars, passphrase Public Global Stellar Network ; September 2015
+wallet: signTransaction asked for 288 base64 chars
 outcome: signed, and the bytes match what was analyzed (status=partial)
 ```
 
@@ -51,7 +51,7 @@ Three things are deliberate:
 
 ```ts
 const wallet: Sep43Signer = {
-  async signTransaction(xdrBase64, opts) {
+  async signTransaction(xdrBase64) {
     return { signedTxXdr: args.tamper ? other.xdr : xdrBase64, signerAddress };
   },
   ...

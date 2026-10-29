@@ -108,14 +108,19 @@ const analyzed = load(SETS[args.path].analyzed);
 const other = load(SETS[args.path].other);
 const signerAddress = analyzed.expected.source ?? null;
 
-/** The stub wallet: no key, no network, no submission. */
+/**
+ * The stub wallet: no key, no network, no submission. A real wallet gets the
+ * same `opts`, including the `networkPassphrase` the adapter copies from the
+ * analysis context; this stub needs neither, and logs no value from the request
+ * beyond its size.
+ */
 const wallet: Sep43Signer = {
-  async signTransaction(xdrBase64, opts) {
-    console.log(`wallet: signTransaction asked for ${xdrBase64.length} base64 chars, passphrase ${opts?.networkPassphrase}`);
+  async signTransaction(xdrBase64) {
+    console.log(`wallet: signTransaction asked for ${xdrBase64.length} base64 chars`);
     return { signedTxXdr: args.tamper ? other.xdr : xdrBase64, ...(signerAddress === null ? {} : { signerAddress }) };
   },
-  async signAuthEntry(authEntryBase64, opts) {
-    console.log(`wallet: signAuthEntry asked for ${authEntryBase64.length} base64 chars, passphrase ${opts?.networkPassphrase}`);
+  async signAuthEntry(authEntryBase64) {
+    console.log(`wallet: signAuthEntry asked for ${authEntryBase64.length} base64 chars`);
     return { signedAuthEntry: args.tamper ? other.xdr : authEntryBase64, ...(signerAddress === null ? {} : { signerAddress }) };
   },
 };
