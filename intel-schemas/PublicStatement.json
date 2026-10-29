@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sorosentinel:schema:v1:PublicStatement",
+  "title": "PublicStatement",
+  "description": "Text produced only by the template renderer. When rendering fails closed, no PublicStatement exists and consumers show facts only.",
+  "type": "object",
+  "required": ["template_id", "signal_level", "text", "attribution", "facts", "as_of", "method", "ruleset_version", "methodology_url", "review_url"],
+  "additionalProperties": false,
+  "properties": {
+    "template_id": { "type": "string", "pattern": "^[a-z0-9_]+(\\.[a-z0-9_]+)*\\.v[0-9]+$" },
+    "signal_level": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/signalLevel" },
+    "text": { "type": "string", "maxLength": 2000 },
+    "attribution": { "type": "string", "maxLength": 1000 },
+    "facts": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/facts" },
+    "as_of": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/timestamp" },
+    "method": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]{1,63}$" },
+    "ruleset_version": { "$ref": "urn:sorosentinel:schema:v1:common#/$defs/rulesetVersion" },
+    "methodology_url": { "type": "string", "format": "uri", "pattern": "^https://" },
+    "review_url": { "type": "string", "format": "uri", "pattern": "^https://" }
+  }
+}

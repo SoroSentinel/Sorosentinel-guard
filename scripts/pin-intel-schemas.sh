@@ -10,7 +10,7 @@ set -eu
 TAG="${1:?usage: $0 <tag>}"
 REPO="SoroSentinel/Sorosentinel-intel"
 OUT="$(cd "$(dirname "$0")/.." && pwd)/intel-schemas"
-FILES="schemas/vectors/canonical_keys.json schemas/vectors/snapshot_signing.json schemas/jsonschema/Snapshot.json schemas/jsonschema/AnalysisResult.json wording/vectors/render.json wording/blocklist.yaml"
+FILES="schemas/vectors/canonical_keys.json schemas/vectors/snapshot_signing.json schemas/jsonschema/Snapshot.json schemas/jsonschema/AnalysisResult.json schemas/jsonschema/Entity.json schemas/jsonschema/EntitySignal.json schemas/jsonschema/PublicStatement.json schemas/jsonschema/common.json schemas/openapi/intel.v1.yaml wording/vectors/render.json wording/blocklist.yaml"
 
 COMMIT=$(git ls-remote "https://github.com/$REPO" "refs/tags/$TAG^{}" | cut -f1)
 [ -n "$COMMIT" ] || COMMIT=$(git ls-remote "https://github.com/$REPO" "refs/tags/$TAG" | cut -f1)

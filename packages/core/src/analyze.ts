@@ -4,8 +4,9 @@ import { decodeForAnalysis, type AnalysisInput } from "./decode/envelope.ts";
 import type { Network, UnanalyzableReason } from "./decode/types.ts";
 import { contractEffects, type ContractEffects } from "./effects/contract.ts";
 import { deriveEffects } from "./effects/derive.ts";
-import type { AccountEffect, BalanceEffect } from "./effects/types.ts";
-import { collectEntities, lookup, type CounterpartyHit } from "./intel/lookup.ts";
+import type { AccountEffect, BalanceEffect, EffectsResult } from "./effects/types.ts";
+import { lookupEntitySignals, type IntelApiConfig } from "./intel/api.ts";
+import { collectEntities, lookup, type CounterpartyHit, type Entities } from "./intel/lookup.ts";
 import { checkSnapshot, type SnapshotRejection } from "./intel/snapshot.ts";
 import { lookupMemoRequired, memoDestinations, type MemoLookup } from "./memo/memo-required.ts";
 import { accountControl } from "./rules/account-control.ts";
@@ -61,6 +62,13 @@ export interface AnalyzeContext {
    * destinations of a transaction without a memo. Nothing else is sent.
    */
   rpc?: RpcConfig;
+  /**
+   * Intel's public API endpoint, opt-in (Guard has no default). Used only by
+   * `analyzeAsync`, and only when no snapshot settled the counterparties: it
+   * receives the network, type and key of each counterparty, never the
+   * transaction, its XDR or its hash.
+   */
+  intel?: IntelApiConfig;
 }
 
 /**
@@ -93,28 +101,38 @@ const RULES: readonly Rule[] = [accountControl, counterpartyFlagged, memoRequire
 /**
  * Analyzes a base64 transaction envelope before signing. Never throws and
  * never reports a clean result for anything it did not fully check. Reads no
- * ledger data, so a transaction without a memo that pays a plain account
- * carries NC-MEMO-REQUIRED.
+ * ledger data and makes no network call, so a transaction without a memo that
+ * pays a plain account carries NC-MEMO-REQUIRED and counterparties are checked
+ * only against `ctx.snapshot`.
  */
 export function analyze(envelopeBase64: string, ctx: AnalyzeContext): AnalysisResult {
   const decoded = decodeForAnalysis(envelopeBase64, ctx.networkPassphrase);
-  return decoded.ok ? evaluate(decoded.input, ctx, null, memoWithoutLedger(decoded.input) ?? { ok: false }) : undecodable(decoded.reason);
+  if (!decoded.ok) return undecodable(decoded.reason);
+  const { input } = decoded;
+  const effects = deriveEffects(input, undefined);
+  const entities = collectEntities(input, effects);
+  const cp = snapshotCounterparties(entities, ctx, input.tx.network);
+  return evaluate(input, ctx, effects, null, memoWithoutLedger(input) ?? { ok: false }, cp);
 }
 
 /**
- * Runs `analyze` with ledger data from `ctx.rpc`: simulates Soroban
- * invocations and reads the destinations' SEP-29 memo requirement. Never
- * throws. A successful simulation clears NC-SIMULATION and supplies the
- * invocation's balance effects; NC-OPERATION-EFFECTS clears only when those
- * are complete. A successful memo lookup clears NC-MEMO-REQUIRED. Any failure
- * keeps the corresponding codes, so the result stays `partial`.
+ * Runs `analyze` with ledger data from `ctx.rpc` and, when no snapshot settled
+ * them, counterparty signals from `ctx.intel`: simulates Soroban invocations
+ * and reads the destinations' SEP-29 memo requirement. Never throws. A
+ * successful simulation clears NC-SIMULATION and supplies the invocation's
+ * balance effects; NC-OPERATION-EFFECTS clears only when those are complete. A
+ * successful memo lookup clears NC-MEMO-REQUIRED. Any failure keeps the
+ * corresponding codes, so the result stays `partial`.
  */
 export async function analyzeAsync(envelopeBase64: string, ctx: AnalyzeContext): Promise<AnalysisResult> {
   const decoded = decodeForAnalysis(envelopeBase64, ctx.networkPassphrase);
   if (!decoded.ok) return { ...undecodable(decoded.reason), simulation: { status: "skipped", reason: "not_decoded" } };
   const { input } = decoded;
   const [sim, memo] = await Promise.all([simulate(envelopeBase64, input, ctx), memoLookup(input, ctx)]);
-  return { ...evaluate(input, ctx, sim.simulated, memo), simulation: sim.outcome };
+  const effects = deriveEffects(input, sim.simulated?.contract);
+  const entities = collectEntities(input, effects);
+  const counterparties = await counterpartiesOf(entities, ctx, input.tx.network);
+  return { ...evaluate(input, ctx, effects, sim.simulated, memo, counterparties), simulation: sim.outcome };
 }
 
 /** `simulated` is null when Soroban invocations were not simulated successfully. */
@@ -176,50 +194,25 @@ function undecodable(reason: UnanalyzableReason): AnalysisResult {
 /**
  * `simulated` is null when Soroban invocations were not simulated
  * successfully; `memo` is not ok when SEP-29 data entries were not read.
+ * `effects`, `entities` and `cp` are computed by the caller so that the
+ * counterparty lookup can use them before the rules run.
  */
 function evaluate(
   input: AnalysisInput,
   ctx: AnalyzeContext,
+  effects: EffectsResult,
   simulated: { contract: ContractEffects | undefined } | null,
   memo: MemoLookup,
+  cp: Counterparties,
 ): AnalysisResult {
-  const effects = deriveEffects(input, simulated?.contract);
   const rc = ruleContext(ctx);
   if (memo.ok) rc.memoRequired = memo.required;
-
-  // Counterparty lookup: only against a snapshot that verifies, matches the
-  // network and is fresh. Everything else leaves counterparties unchecked.
-  let snapshotStatus: SnapshotStatus = "not_provided";
-  let counterpartiesChecked = false;
-  const network = input.tx.network;
-  if (ctx.snapshot !== undefined) {
-    if (network === "unknown") {
-      snapshotStatus = "not_applicable";
-    } else if (ctx.asOf === undefined || !Number.isFinite(ctx.asOf.getTime())) {
-      snapshotStatus = "no_as_of";
-    } else {
-      const check = checkSnapshot(ctx.snapshot.data, {
-        pinnedKeys: ctx.snapshot.pinnedKeys,
-        network,
-        asOf: ctx.asOf,
-        ...(ctx.snapshot.maxAgeSeconds === undefined ? {} : { maxAgeSeconds: ctx.snapshot.maxAgeSeconds }),
-      });
-      if (!check.ok) {
-        snapshotStatus = check.reason;
-      } else {
-        snapshotStatus = "verified";
-        const entities = collectEntities(input, effects);
-        const { hits, unresolved } = lookup(entities, network, check.entries);
-        rc.hits = hits;
-        counterpartiesChecked = !entities.contractsUnchecked && unresolved === 0;
-      }
-    }
-  }
+  rc.hits = cp.hits;
 
   const findings = orderFindings(RULES.flatMap((rule) => rule(input, effects, rc)));
 
   const notChecked = new Set<NotChecked>(["NC-EXECUTION-TIME"]);
-  if (!counterpartiesChecked) notChecked.add("NC-COUNTERPARTY-SIGNALS");
+  if (!cp.checked) notChecked.add("NC-COUNTERPARTY-SIGNALS");
   if (effects.uncovered.length > 0) notChecked.add("NC-OPERATION-EFFECTS");
   if (simulated === null && input.tx.operations.some((op) => op.type === "invokeHostFunction")) notChecked.add("NC-SIMULATION");
   if (input.tx.network === "unknown") notChecked.add("NC-NETWORK-COVERAGE");
@@ -234,8 +227,50 @@ function evaluate(
     accountEffects: effects.accountEffects,
     findings,
     notChecked: [...notChecked].sort(),
-    snapshotStatus,
+    snapshotStatus: cp.status,
   };
+}
+
+/** What the counterparty checks found, and whether they could be run at all. */
+interface Counterparties {
+  status: SnapshotStatus;
+  hits: CounterpartyHit[];
+  checked: boolean;
+}
+
+/**
+ * Counterparty lookup against the snapshot: only one that verifies, matches the
+ * network and is fresh can settle them. Everything else leaves them unchecked,
+ * which is what makes the fallback worth asking about.
+ */
+function snapshotCounterparties(entities: Entities, ctx: AnalyzeContext, network: Network): Counterparties {
+  if (ctx.snapshot === undefined) return { status: "not_provided", hits: [], checked: false };
+  if (network === "unknown") return { status: "not_applicable", hits: [], checked: false };
+  if (ctx.asOf === undefined || !Number.isFinite(ctx.asOf.getTime())) return { status: "no_as_of", hits: [], checked: false };
+  const check = checkSnapshot(ctx.snapshot.data, {
+    pinnedKeys: ctx.snapshot.pinnedKeys,
+    network,
+    asOf: ctx.asOf,
+    ...(ctx.snapshot.maxAgeSeconds === undefined ? {} : { maxAgeSeconds: ctx.snapshot.maxAgeSeconds }),
+  });
+  if (!check.ok) return { status: check.reason, hits: [], checked: false };
+  const { hits, unresolved } = lookup(entities, network, check.entries);
+  return { status: "verified", hits, checked: !entities.contractsUnchecked && unresolved === 0 };
+}
+
+/**
+ * The snapshot first, and Intel's API only when the snapshot could not settle
+ * the counterparties and the integrator configured an endpoint. A verified
+ * snapshot that could not name every entity (contract creation, an
+ * uncanonicalizable key) is a structural gap the API cannot fill either, so it
+ * is not asked. Any API failure leaves the snapshot's own answer: unchecked.
+ */
+async function counterpartiesOf(entities: Entities, ctx: AnalyzeContext, network: Network): Promise<Counterparties> {
+  const fromSnapshot = snapshotCounterparties(entities, ctx, network);
+  if (fromSnapshot.checked || ctx.intel === undefined) return fromSnapshot;
+  if (network === "unknown" || ctx.asOf === undefined || !Number.isFinite(ctx.asOf.getTime())) return fromSnapshot;
+  const reply = await lookupEntitySignals(entities, network, ctx.intel, ctx.asOf);
+  return reply.ok ? { ...fromSnapshot, hits: reply.hits, checked: reply.checked } : fromSnapshot;
 }
 
 // Only a complete check may report `findings_present` or `no_issues_found`.
