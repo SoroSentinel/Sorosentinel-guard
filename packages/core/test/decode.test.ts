@@ -136,9 +136,14 @@ describe("operation support", () => {
     expect(types.filter((t) => !covered.has(t))).toEqual([]);
   });
 
-  it("covers both Soroban credential kinds used by v1 signing flows", () => {
+  it("covers every Soroban credential arm an envelope can carry", () => {
     const creds = new Set(fixtures.flatMap((f) => ("auth" in f.expected ? (f.expected.auth ?? []).map((a) => a.credential) : [])));
-    expect([...creds].sort()).toEqual(["sorobanCredentialsAddress", "sorobanCredentialsSourceAccount"]);
+    expect([...creds].sort()).toEqual([
+      "sorobanCredentialsAddress",
+      "sorobanCredentialsAddressV2",
+      "sorobanCredentialsAddressWithDelegates",
+      "sorobanCredentialsSourceAccount",
+    ]);
   });
 });
 

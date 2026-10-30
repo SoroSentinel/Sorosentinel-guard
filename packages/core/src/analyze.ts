@@ -1,18 +1,19 @@
 import { xdr } from "@stellar/stellar-sdk/base";
 
+import { decodeAuthEntry, type AuthEntryAddress } from "./decode/auth-entry.ts";
 import { decodeForAnalysis, type AnalysisInput } from "./decode/envelope.ts";
-import type { Network, UnanalyzableReason } from "./decode/types.ts";
+import type { CredentialType, Network, UnanalyzableReason } from "./decode/types.ts";
 import { contractEffects, type ContractEffects } from "./effects/contract.ts";
 import { deriveEffects } from "./effects/derive.ts";
 import type { AccountEffect, BalanceEffect, EffectsResult } from "./effects/types.ts";
 import { lookupEntitySignals, type IntelApiConfig } from "./intel/api.ts";
-import { collectEntities, lookup, type CounterpartyHit, type Entities } from "./intel/lookup.ts";
+import { collectEntities, lookup, type ContractRole, type CounterpartyHit, type Entities } from "./intel/lookup.ts";
 import { checkSnapshot, type SnapshotRejection } from "./intel/snapshot.ts";
 import { lookupMemoRequired, memoDestinations, type MemoLookup } from "./memo/memo-required.ts";
 import { accountControl } from "./rules/account-control.ts";
-import { counterpartyFlagged } from "./rules/counterparty-flagged.ts";
+import { counterpartyFlagged, flaggedFindings } from "./rules/counterparty-flagged.ts";
 import { memoRequired } from "./rules/memo-required.ts";
-import { networkUnknown } from "./rules/network-unknown.ts";
+import { networkUnknown, networkUnknownFinding } from "./rules/network-unknown.ts";
 import { noExpiry } from "./rules/no-expiry.ts";
 import { signerAdded } from "./rules/signer-added.ts";
 import { orderFindings, type Finding, type Rule, type RuleContext } from "./rules/types.ts";
@@ -133,6 +134,90 @@ export async function analyzeAsync(envelopeBase64: string, ctx: AnalyzeContext):
   const entities = collectEntities(input, effects);
   const counterparties = await counterpartiesOf(entities, ctx, input.tx.network);
   return { ...evaluate(input, ctx, effects, sim.simulated, memo, counterparties), simulation: sim.outcome };
+}
+
+/** What an authorization entry is, and what Guard could and could not check about it. */
+export interface AuthEntryAnalysisResult {
+  /** Always `partial` or `unanalyzable`: see `notChecked` below. */
+  status: AnalysisStatus;
+  network: Network;
+  /** Null when the entry did not decode. */
+  credential: CredentialType | null;
+  /** Address whose signature the entry requires; null for source-account credentials. */
+  address: AuthEntryAddress | null;
+  /** Decimal string; null unless the credential is address-based. */
+  nonce: string | null;
+  signatureExpirationLedger: number | null;
+  /** Signatures the entry collects beyond its own (delegated credentials). */
+  delegateSignatures: number;
+  /** Nodes of the authorized invocation tree, the root included. */
+  invocationNodes: number;
+  /** `C…` contracts the tree calls, deduped and sorted. */
+  contracts: string[];
+  /** Most severe first; never truncated. */
+  findings: Finding[];
+  notChecked: NotChecked[];
+  snapshotStatus: SnapshotStatus;
+  /** Present when status is `unanalyzable`. */
+  unanalyzableReason?: UnanalyzableReason;
+}
+
+/**
+ * The entry-side counterpart of `analyze`, for SEP-43's `signAuthEntry`: it
+ * analyzes one base64 `SorobanAuthorizationEntry`. Never throws, reads no
+ * ledger data and makes no network call, so counterparties are checked only
+ * against `ctx.snapshot`.
+ *
+ * An entry names no source account, carries no operations, cannot be simulated
+ * on its own, and has no memo or destination, so `NC-OPERATION-EFFECTS`,
+ * `NC-SIMULATION` and `NC-EXECUTION-TIME` are always carried and the status can
+ * never be better than `partial` (AGENTS.md §3.9). The address is reported as
+ * structured data rather than looked up: Guard has no finding code for a
+ * flagged signing account, and inventing one needs approval (AGENTS.md §10).
+ */
+export function analyzeAuthEntry(authEntryBase64: string, ctx: AnalyzeContext): AuthEntryAnalysisResult {
+  const decoded = decodeAuthEntry(authEntryBase64, ctx.networkPassphrase);
+  if (!decoded.ok) {
+    return {
+      status: "unanalyzable",
+      network: "unknown",
+      credential: null,
+      address: null,
+      nonce: null,
+      signatureExpirationLedger: null,
+      delegateSignatures: 0,
+      invocationNodes: 0,
+      contracts: [],
+      findings: [],
+      notChecked: ["NC-DECODE"],
+      snapshotStatus: "not_applicable",
+      unanalyzableReason: decoded.reason,
+    };
+  }
+  const entry = decoded.entry;
+  const contracts = new Map<string, Set<ContractRole>>();
+  for (const c of entry.contracts) contracts.set(c, new Set<ContractRole>(["invoked"]));
+  const entities: Entities = { accounts: new Map(), assets: new Map(), contracts, contractsUnchecked: entry.contractsUnchecked };
+  const cp = snapshotCounterparties(entities, ctx, entry.network);
+
+  const notChecked = new Set<NotChecked>(["NC-EXECUTION-TIME", "NC-OPERATION-EFFECTS", "NC-SIMULATION"]);
+  if (!cp.checked) notChecked.add("NC-COUNTERPARTY-SIGNALS");
+  if (entry.network === "unknown") notChecked.add("NC-NETWORK-COVERAGE");
+
+  return {
+    status: "partial",
+    network: entry.network,
+    credential: entry.credential,
+    address: entry.address,
+    nonce: entry.nonce,
+    signatureExpirationLedger: entry.signatureExpirationLedger,
+    delegateSignatures: entry.delegateSignatures,
+    invocationNodes: entry.invocationNodes,
+    contracts: entry.contracts,
+    findings: orderFindings([...networkUnknownFinding(entry.network), ...flaggedFindings(cp.hits)]),
+    notChecked: [...notChecked].sort(),
+    snapshotStatus: cp.status,
+  };
 }
 
 /** `simulated` is null when Soroban invocations were not simulated successfully. */

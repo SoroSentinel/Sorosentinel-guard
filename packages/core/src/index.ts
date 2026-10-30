@@ -4,10 +4,27 @@ export { operationSupport } from "./decode/operations.ts";
 export type * from "./decode/types.ts";
 export { decodeForAnalysis } from "./decode/envelope.ts";
 export type { AnalysisInput, AnalysisDecodeResult } from "./decode/envelope.ts";
+export {
+  MAX_AUTH_ENTRY_BASE64_LENGTH,
+  MAX_DELEGATE_SIGNATURES,
+  MAX_INVOCATION_DEPTH,
+  MAX_INVOCATION_NODES,
+  decodeAuthEntry,
+} from "./decode/auth-entry.ts";
+export type { AuthEntryAddress, AuthEntryDecodeResult, DecodedAuthEntry } from "./decode/auth-entry.ts";
+export { sameAuthEntry, sameTransactionPayload } from "./decode/signing-payload.ts";
 export { deriveEffects } from "./effects/derive.ts";
 export type * from "./effects/types.ts";
-export { analyze, analyzeAsync } from "./analyze.ts";
-export type { AnalysisResult, AnalysisStatus, AnalyzeContext, CounterpartyHit, NotChecked, SnapshotStatus } from "./analyze.ts";
+export { analyze, analyzeAsync, analyzeAuthEntry } from "./analyze.ts";
+export type {
+  AnalysisResult,
+  AnalysisStatus,
+  AnalyzeContext,
+  AuthEntryAnalysisResult,
+  CounterpartyHit,
+  NotChecked,
+  SnapshotStatus,
+} from "./analyze.ts";
 export type { Finding, FindingCode, Severity } from "./rules/types.ts";
 export { MAX_DISPLAY_LENGTH, escapeHtml, sanitizeHexBytes, sanitizeUntrusted } from "./wording/sanitize.ts";
 export type { RenderResult, Statement } from "./wording/render.ts";

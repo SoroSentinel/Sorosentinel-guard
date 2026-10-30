@@ -1,0 +1,21 @@
+{
+  "name": "address_is_contract",
+  "description": "Credentials attached to a contract address rather than an account",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "xdr": "AAAAAQAAAAEHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAAAAAAHAExLQAAAAAEAAAAAAAAAAQcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHAAAACHRyYW5zZmVyAAAAAAAAAAA=",
+  "expected": {
+    "credential": "sorobanCredentialsAddress",
+    "address": {
+      "kind": "contract",
+      "contract": "CADQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQP5KR"
+    },
+    "nonce": "7",
+    "signature_expiration_ledger": 5000000,
+    "delegate_signatures": 0,
+    "invocation_nodes": 1,
+    "contracts": [
+      "CADQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQP5KR"
+    ],
+    "contracts_unchecked": false
+  }
+}

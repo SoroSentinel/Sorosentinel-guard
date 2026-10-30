@@ -1,0 +1,21 @@
+{
+  "name": "address_is_claimable_balance",
+  "description": "Credentials on a claimable-balance address: no StrKey codec, reported as hex",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "xdr": "AAAAAQAAAAMAAAAAAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMAAAAAAAAABwBMS0AAAAABAAAAAAAAAAEHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAh0cmFuc2ZlcgAAAAAAAAAA",
+  "expected": {
+    "credential": "sorobanCredentialsAddress",
+    "address": {
+      "kind": "claimable_balance",
+      "idHex": "000000000303030303030303030303030303030303030303030303030303030303030303"
+    },
+    "nonce": "7",
+    "signature_expiration_ledger": 5000000,
+    "delegate_signatures": 0,
+    "invocation_nodes": 1,
+    "contracts": [
+      "CADQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQP5KR"
+    ],
+    "contracts_unchecked": false
+  }
+}
