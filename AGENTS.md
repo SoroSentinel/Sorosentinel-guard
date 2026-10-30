@@ -86,7 +86,7 @@ Applies to API responses, Guard UI text, CLI output meant for end users, lookup 
 ### `sorosentinel-guard` (TypeScript)
 
 - **Is:** an SDK/middleware called before signing: `analyze(xdr, ctx)`. Not a server.
-- **Commands:** check everything `make verify` (strict typecheck, tests, fixtures up to date) · test `make test` · lint/typecheck `make lint` · regenerate fixtures `make gen` (never edit `fixtures/` by hand) · replay experiment E2 `make replay FILE=<txs.jsonl>` · build: none (no build step yet).
+- **Commands:** check everything `make verify` (strict typecheck, tests, fixtures up to date) · test `make test` · lint/typecheck `make lint` · regenerate fixtures `make gen` (never edit `fixtures/` by hand) · replay experiment E2 `make replay FILE=<txs.jsonl>` · latency benchmark `make bench N=<iterations> [RPC=<url>]` · build: none (no build step yet).
 - **Rules:**
   - Strict TypeScript; no `any`. Use `switch` with an exhaustive `never` check over operation and credential types so new protocol variants fail at compile time.
   - v1 derives effects for ~7 operations (payment, path payments, create account, change trust, set options, account merge, contract invoke). Everything else: decode + `unanalyzable` with a generic summary.
