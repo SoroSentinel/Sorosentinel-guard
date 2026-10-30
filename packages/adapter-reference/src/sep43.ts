@@ -1,8 +1,9 @@
 /**
  * SEP-43 ("Standard Web Wallet API Interface") v1.2.1, **status: Draft**, the
  * two signing methods only. Checked against
- * `stellar-protocol/ecosystem/SEP-0043.md` on 2026-10-29, not inferred from any
- * wallet's typings. SEP-60 requires an announced wallet to implement it.
+ * `stellar/stellar-protocol@62a67297ea14 ecosystem/sep-0043.md` on 2026-10-30,
+ * not inferred from any wallet's typings. SEP-60 requires an announced wallet to
+ * implement it.
  *
  * The spec writes its results as `Promise<{ ... } & error?: Error>`, which is
  * pseudo-code rather than valid TypeScript: an optional property cannot be
@@ -11,11 +12,20 @@
  * types carry `error` as an optional field and Guard checks it before anything
  * else. A wallet that throws instead is handled the same way by the adapter.
  *
- * TODO(verify): `signAuthEntry`'s parameter is described in prose as an
- * "authorization entry preimage" while the interface types it as a base64
- * string. The adapter treats it as a base64 `SorobanAuthorizationEntry`, the
- * only reading consistent with the interface and with what a wallet can fill a
- * signature into.
+ * `signAuthEntry`'s payload is genuinely ambiguous in the spec, and both
+ * readings ship in wallets. Its interface types the parameter `authEntry: string`
+ * and the result `signedAuthEntry: string`; its prose calls the same parameter an
+ * "authorization entry preimage" and links it to
+ * `js-stellar-base@a9567e584376 types/curr.d.ts:6894`, which is
+ * `HashIdPreimageSorobanAuthorization`. Freighter — an announced wallet, so bound
+ * by SEP-60 — follows the preimage reading at
+ * `stellar/freighter@b237323ccf55`: its popup parses the parameter with
+ * `xdr.HashIdPreimage.fromXdr(entry, "base64")` and its background handler returns
+ * `base64(Keypair.sign(hash(entryBytes)))`, i.e. a bare 64-byte signature, and its
+ * own playground labels the input "entry preimage XDR". Guard works in the entry
+ * reading, because an entry is the only form whose authorized call tree it can
+ * analyze; `guardSignAuthEntry` classifies whatever comes back rather than
+ * assuming either wallet.
  */
 
 /** Errors carry a message meant for the user and one of the spec's codes. */

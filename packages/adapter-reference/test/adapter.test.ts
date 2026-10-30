@@ -237,6 +237,27 @@ describe("guardSignAuthEntry", () => {
     expect(r.analysis.address).toEqual({ kind: "account", account: expect.any(String), muxedId: null });
   });
 
+  it("a wallet that answers with a bare signature is unverifiable, not accusably different", async () => {
+    // Freighter reads the parameter as the entry's preimage and signs it, so it
+    // hands back 64 bytes and nothing else: no payload, so no comparison is
+    // possible. The findings from the analysis must survive all the same.
+    const signatureOnly = btoa(String.fromCharCode(...new Uint8Array(64).fill(8)));
+    const { wallet, calls } = entryWallet({ signedAuthEntry: signatureOnly, signerAddress: "G-signer" });
+    const r = await guardSignAuthEntry(wallet, authEntry.xdr, ctx, approve);
+    expect(calls[0]?.xdr).toBe(authEntry.xdr);
+    expect(r).toMatchObject({ outcome: "signed_unverifiable", status: "partial", signedAuthEntry: signatureOnly, signerAddress: "G-signer", shape: "signature" });
+    if (r.outcome !== "signed_unverifiable") throw new Error("expected an unverifiable reply");
+    expect(r.analysis.notChecked).toContain("NC-EXECUTION-TIME");
+  });
+
+  it("a reply that is neither an entry nor signature-length is still partial", async () => {
+    for (const junk of ["AAAA", "not base64 %%%%", btoa("a signature shorter than 64 bytes")]) {
+      const { wallet } = entryWallet({ signedAuthEntry: junk });
+      const r = await guardSignAuthEntry(wallet, authEntry.xdr, ctx, approve);
+      expect(r).toMatchObject({ outcome: "signed_unverifiable", status: "partial", signedAuthEntry: junk, shape: "other" });
+    }
+  });
+
   it("an entry Guard could not analyze never ends as a clean result", async () => {
     const { wallet } = entryWallet({ signedAuthEntry: signedAuthEntry.xdr });
     const r = await guardSignAuthEntry(wallet, "not base64 %%%%", ctx, (a) => {

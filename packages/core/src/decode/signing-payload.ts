@@ -30,6 +30,22 @@ export function sameAuthEntry(analyzedBase64: string, returnedBase64: string): b
   return a !== null && b !== null && sameBytes(a, b);
 }
 
+/** Whether the base64 parses at all as a `SorobanAuthorizationEntry`. */
+export function isAuthEntry(base64: string): boolean {
+  return analyzeEntry(base64) !== null;
+}
+
+/**
+ * Whether the base64 is the encoding of exactly 64 bytes, the length of an
+ * Ed25519 signature. A statement about length only: nothing here proves what
+ * those bytes sign, which is why `sameAuthEntry` cannot be used on them.
+ */
+export function isSignatureLength(base64: string): boolean {
+  const body = base64.replace(/=+$/, "");
+  if (!/^[A-Za-z0-9+/]+$/.test(body)) return false;
+  return Math.floor((body.length * 3) / 4) === 64;
+}
+
 function analyze(envelopeBase64: string): xdr.TransactionEnvelope | null {
   try {
     return xdr.TransactionEnvelope.fromXdr(envelopeBase64, "base64");
