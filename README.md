@@ -12,6 +12,14 @@ Guard is a TypeScript SDK that a wallet calls just before a user signs. It decod
 
 Part of **SoroSentinel**, security tooling for the Stellar ecosystem. It advises; it never controls the network and never touches private keys.
 
+## Watch it work
+
+[![A 23-second film: the word "safe" struck through, then a decoded transaction's findings panel, then the terms on Guard's own blocklist struck through one by one](media/sorosentinel-guard.jpg)](media/sorosentinel-guard.mp4)
+
+No real account, contract or transaction appears in it; the address and amounts are demo values. The card it shows is what `analyze()` returns — a Critical and a High finding in severity order, the worst-case balance effect per account, and the list of what was not checked. The struck-through word in the first beat is the one Guard is not allowed to output; its best possible result is `no_issues_found`.
+
+Music: ["Business Moves Vol. 12"](https://www.ende.app) by Sascha Ende, used under CC BY 4.0.
+
 ## Maintainers | [Telegram](TODO-telegram-group-link)
 
 | Maintainer | GitHub | Contact |
