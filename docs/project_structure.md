@@ -240,25 +240,29 @@ sorosentinel-guard/
 │   │   │   ├── wording/       # renderer + compiled templates (from @sorosentinel/wording), sanitizers
 │   │   │   └── ui/            # reference findings view: plain DOM, writes no prose of its own
 │   │   ├── types/             # node-shim.d.ts: the Node built-ins `test/` and `scripts/` may use; `src/` must not
-│   │   ├── scripts/           # gen-fixtures, replay, export-rpc-txs, demo-findings
+│   │   ├── scripts/           # gen-fixtures, replay, export-rpc-txs, demo-findings, bench
 │   │   └── test/              # unit tests, plus `test/contract/` = the pinned shared vectors
-│   └── adapter-reference/     # planned, not built: one reference wallet adapter (wraps a signTransaction-style call)
+│   └── adapter-reference/     # @sorosentinel/guard-adapter-reference: the reference SEP-43 wallet adapter
 │
 ├── intel-schemas/             # Intel's pinned schemas, wording vectors, blocklist + SHA256SUMS
 ├── fixtures/
 │   ├── tx/benign/             # *.json: {xdr, network, signer, expected}
 │   ├── tx/hostile/            # padding, hashX signer, no time bounds, memo-required, fee-bump, muxed, unknown network
+│   ├── auth_entry/benign/     # Soroban authorization entries: each address kind an entry can name, each credential arm, nested invocations
+│   ├── auth_entry/hostile/    # truncated XDR, malformed base64, oversized, empty passphrase, a pre-filled signature
 │   └── snapshots/             # signed test snapshots (test keys only)
-├── examples/                  # minimal usage sample (the reference integrator)
+├── examples/                  # analyze-transaction/ (the reference integrator) and wallet-adapter/
 ├── scripts/                   # repo scripts
+├── media/                     # the film linked from README.md, and its poster frame
 └── docs/                      # generated copies from Intel
 ```
 
 **Notes**
 - **Not a server.** No deployable in v1; the artifact is an npm package.
-- One fixture per operation/credential type, enforced by a test that enumerates the XDR enum and fails if a case has no fixture.
+- One fixture per operation/credential type, enforced by a test that enumerates the XDR enum and fails if a case has no fixture. The same guarantee holds for Soroban authorization entries: `test/auth-entry.test.ts` asserts coverage of every credential arm and every address kind an entry can name.
 - The renderer here is a **second implementation** of Intel's renderer (needed offline). Both must pass `wording/vectors/`.
 - `ui/` writes no prose: sentences arrive only through the injected renderer hook, and a missing or failed render degrades to the finding's structured facts (AGENTS.md §5). It takes `Document` as an option and uses `createTextNode`, never `innerHTML`, so it needs no DOM dependency and is testable without a browser. Approved display rules live there, not in each integrator's copy.
+- `adapter-reference/` is the SEP-43 signing surface only (`signTransaction`, `signAuthEntry`), typed against `stellar-protocol/ecosystem/SEP-0043.md` v1.2.1 rather than any wallet's typings; the one ambiguous reading in that spec is flagged `TODO(verify)` in `src/sep43.ts`. It analyzes before asking the wallet for anything, checks that what came back is the bytes it analyzed (a mismatch is reported as `signed_other_bytes` with status `partial`, never as a clean result), and returns reason **codes** instead of sentences so the integrator owns the wording. It holds no key and submits nothing (AGENTS.md §3.4, §3.8).
 - Test keys used for fixtures are clearly labeled and never valid for production.
 
 ---
@@ -290,7 +294,8 @@ This is slower than a monorepo; it is the cost of three repos. Pre-release build
 | New Intel detector | `intel/internal/detectors/<name>/` + template(s) in `intel/wording/templates/` + cases in `intel/corpus/` + unit test + ruleset_version bump |
 | New public wording | `intel/wording/templates/en/` + vectors + `wordlint` pass; **separate PR; counsel review** |
 | New Guard finding code | `guard/packages/core/src/rules/` + template in Intel + fixture(s) under `guard/fixtures/tx/` |
-| New operation/credential decoder | `guard/packages/core/src/decode/` + fixture + (if effects) `effects/` |
+| New operation/credential decoder | `guard/packages/core/src/decode/` + a fixture (`fixtures/tx/` for envelopes, `fixtures/auth_entry/` for authorization entries) + (if effects) `effects/` |
+| New or changed adapter behaviour (which bytes it analyzes, when it refuses to sign) | `guard/packages/adapter-reference/src/` + its test in `packages/adapter-reference/test/` + re-run `guard/examples/wallet-adapter/sign.mts` with and without `--approve` (and with `--tamper`) so the declined and byte-mismatch paths still show the findings |
 | New or changed Guard display rule (order, truncation, wording fallback) | `guard/packages/core/src/ui/` + a structure test in `packages/core/test/ui-findings.test.ts` + re-open the generated page (`packages/core/scripts/demo-findings.ts`) in a browser to re-check focus order and the accessibility tree |
 | New Scan indicator | `scan/crates/scan-core/src/detectors/` + fixture + expected JSON; indicator enum change goes through `intel/schemas/` first |
 | New schema field/endpoint | `intel/schemas/` (additive) → `make gen` → publish → consumers bump |
