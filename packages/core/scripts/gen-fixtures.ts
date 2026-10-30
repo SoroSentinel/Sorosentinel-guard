@@ -1,4 +1,5 @@
-// Regenerates fixtures/tx/**. Deterministic: fixed test seeds, fixed time bounds.
+// Regenerates fixtures/tx/** and fixtures/auth_entry/**. Deterministic: fixed
+// test seeds, fixed time bounds.
 // Run: node packages/core/scripts/gen-fixtures.ts
 //
 // TEST KEYS ONLY. Seeds are constant byte patterns, never valid for real funds,
@@ -23,6 +24,8 @@ import {
   type Transaction,
   type FeeBumpTransaction,
 } from "@stellar/stellar-sdk/base";
+
+import type { AuthEntryAddress } from "../src/decode/auth-entry.ts";
 
 const OUT = new URL("../../../fixtures/tx/", import.meta.url);
 
@@ -81,6 +84,83 @@ function write(dir: "benign" | "hostile", name: string, description: string, pas
 function writeUnanalyzable(name: string, description: string, passphrase: string, xdr: string, reason: string) {
   const file = new URL(`hostile/${name}.json`, OUT);
   writeFileSync(file, JSON.stringify({ name, description, network_passphrase: passphrase, xdr, expected: { unanalyzable: reason } }, null, 2) + "\n");
+}
+
+// ---- standalone Soroban authorization entries (SEP-43 signAuthEntry) ----
+const OUT_ENTRY = new URL("../../../fixtures/auth_entry/", import.meta.url);
+
+interface ExpectedEntry {
+  credential: string;
+  /** The key exactly as Guard reports it: StrKey for accounts and contracts, hex where there is no codec. */
+  address: AuthEntryAddress | null;
+  nonce: string | null;
+  signature_expiration_ledger: number | null;
+  delegate_signatures: number;
+  invocation_nodes: number;
+  contracts: string[];
+  contracts_unchecked: boolean;
+}
+
+function writeEntry(dir: "benign" | "hostile", name: string, description: string, passphrase: string, entry: xdr.SorobanAuthorizationEntry, expected: ExpectedEntry) {
+  const dirUrl = new URL(`${dir}/`, OUT_ENTRY);
+  mkdirSync(dirUrl, { recursive: true });
+  writeFileSync(new URL(`${name}.json`, dirUrl), JSON.stringify({ name, description, network_passphrase: passphrase, xdr: entry.toXDR("base64"), expected }, null, 2) + "\n");
+}
+
+function writeEntryUnanalyzable(name: string, description: string, passphrase: string, xdr: string, reason: string) {
+  const file = new URL(`hostile/${name}.json`, OUT_ENTRY);
+  writeFileSync(file, JSON.stringify({ name, description, network_passphrase: passphrase, xdr, expected: { unanalyzable: reason } }, null, 2) + "\n");
+}
+
+/** An invocation of an existing contract; `Contract(...).call` builds the argument types. */
+function callNode(contract: string, subs: xdr.SorobanAuthorizedInvocation[] = []): xdr.SorobanAuthorizedInvocation {
+  const call = new Contract(contract).call("transfer");
+  if (call.body.type !== "invokeHostFunction" || call.body.invokeHostFunctionOp.hostFunction.type !== "hostFunctionTypeInvokeContract") {
+    throw new Error("unexpected contract call shape");
+  }
+  return new xdr.SorobanAuthorizedInvocation({
+    function: xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(call.body.invokeHostFunctionOp.hostFunction.invokeContract),
+    subInvocations: subs,
+  });
+}
+
+function createNode(): xdr.SorobanAuthorizedInvocation {
+  return new xdr.SorobanAuthorizedInvocation({
+    function: xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractHostFn(
+      new xdr.CreateContractArgs({
+        contractIdPreimage: xdr.ContractIdPreimage.contractIdPreimageFromAddress(
+          new xdr.ContractIdPreimageFromAddress({ address: new Address(S).toScAddress(), salt: new Uint8Array(32).fill(9) }),
+        ),
+        executable: xdr.ContractExecutable.contractExecutableWasm(new Uint8Array(32).fill(8)),
+      }),
+    ),
+    subInvocations: [],
+  });
+}
+
+const entry = (credentials: xdr.SorobanCredentials, root: xdr.SorobanAuthorizedInvocation) =>
+  new xdr.SorobanAuthorizationEntry({ credentials, rootInvocation: root });
+
+const addressCredsFor = (address: xdr.ScAddress, expiry: number) =>
+  new xdr.SorobanAddressCredentials({ address, nonce: 7n, signatureExpirationLedger: expiry, signature: xdr.ScVal.scvVoid() });
+
+const g1 = StrKey.encodeEd25519PublicKey(new Uint8Array(32).fill(1));
+const other1 = StrKey.encodeEd25519PublicKey(new Uint8Array(32).fill(2));
+const contract2 = StrKey.encodeContract(new Uint8Array(32).fill(8));
+
+/** Defaults for an address-credential entry calling `contractId` once; each write names what differs. */
+function exp(over: Partial<ExpectedEntry>): ExpectedEntry {
+  return {
+    credential: "sorobanCredentialsAddress",
+    address: { kind: "account", account: other1, muxedId: null },
+    nonce: "7",
+    signature_expiration_ledger: 5_000_000,
+    delegate_signatures: 0,
+    invocation_nodes: 1,
+    contracts: [contractId],
+    contracts_unchecked: false,
+    ...over,
+  };
 }
 
 const S = signer.publicKey();
@@ -194,17 +274,97 @@ write("benign", "memo_id", "Payment with an ID memo", P,
   const auth = [
     new xdr.SorobanAuthorizationEntry({ credentials: xdr.SorobanCredentials.sorobanCredentialsSourceAccount(), rootInvocation: invocation }),
     new xdr.SorobanAuthorizationEntry({ credentials: xdr.SorobanCredentials.sorobanCredentialsAddress(addressCreds(5_000_000)), rootInvocation: invocation }),
+    new xdr.SorobanAuthorizationEntry({ credentials: xdr.SorobanCredentials.sorobanCredentialsAddressV2(addressCreds(5_000_001)), rootInvocation: invocation }),
+    new xdr.SorobanAuthorizationEntry({
+      credentials: xdr.SorobanCredentials.sorobanCredentialsAddressWithDelegates(new xdr.SorobanAddressCredentialsWithDelegates({
+        addressCredentials: addressCreds(5_000_002),
+        delegates: [new xdr.SorobanDelegateSignature({ address: new Address(other.publicKey()).toScAddress(), signature: xdr.ScVal.scvVoid(), nestedDelegates: [] })],
+      })),
+      rootInvocation: invocation,
+    }),
   ];
   const op = Operation.invokeHostFunction({ func: call.body.invokeHostFunctionOp.hostFunction, auth });
-  write("hostile", "auth_entries_address_credentials", "Contract call carrying source-account and address-credential auth entries (another account signs)", T,
+  write("hostile", "auth_entries_address_credentials", "Contract call carrying one auth entry per Soroban credential arm (another account signs)", T,
     signed(builder(T).addOperation(op).build(), signer),
     v1("testnet", one("invokeHostFunction"), {
       auth: [
         { credential: "sorobanCredentialsSourceAccount" },
         { credential: "sorobanCredentialsAddress", signatureExpirationLedger: 5_000_000 },
+        { credential: "sorobanCredentialsAddressV2", signatureExpirationLedger: 5_000_001 },
+        { credential: "sorobanCredentialsAddressWithDelegates" },
       ],
     }));
 }
+
+// ---- standalone entries: one per credential arm, one per address kind ----
+const balIdHex = hex(xdr.ClaimableBalanceId.claimableBalanceIdTypeV0(new xdr.Hash(new Uint8Array(32).fill(3))).toXdr());
+const poolHex = hex(new xdr.Hash(new Uint8Array(32).fill(4)).toBytes());
+const muxedScAddress = xdr.ScAddress.scAddressTypeMuxedAccount(new xdr.MuxedEd25519Account({ id: 42n, ed25519: new Uint8Array(32).fill(2) }));
+const scAddress = (key: string) => new Address(key).toScAddress();
+
+writeEntry("benign", "credential_source_account", "Source-account credentials: the transaction's source signs, so the entry names no address", T,
+  entry(xdr.SorobanCredentials.sorobanCredentialsSourceAccount(), callNode(contractId)),
+  exp({ credential: "sorobanCredentialsSourceAccount", address: null, nonce: null, signature_expiration_ledger: null }));
+
+writeEntry("benign", "credential_address", "Address credentials signing for a G… account", T,
+  entry(xdr.SorobanCredentials.sorobanCredentialsAddress(addressCredsFor(scAddress(other1), 5_000_000)), callNode(contractId)),
+  exp({}));
+
+writeEntry("benign", "credential_address_v2", "Address V2 credentials (CAP-71 address binding)", T,
+  entry(xdr.SorobanCredentials.sorobanCredentialsAddressV2(addressCredsFor(scAddress(other1), 5_000_000)), callNode(contractId)),
+  exp({ credential: "sorobanCredentialsAddressV2" }));
+
+writeEntry("benign", "credential_address_with_delegates", "Delegated credentials: two more signatures, one of them nested", T,
+  entry(xdr.SorobanCredentials.sorobanCredentialsAddressWithDelegates(new xdr.SorobanAddressCredentialsWithDelegates({
+    addressCredentials: addressCredsFor(scAddress(other1), 5_000_000),
+    delegates: [
+      new xdr.SorobanDelegateSignature({ address: scAddress(g1), signature: xdr.ScVal.scvVoid(), nestedDelegates: [
+        new xdr.SorobanDelegateSignature({ address: scAddress(other1), signature: xdr.ScVal.scvVoid(), nestedDelegates: [] }),
+      ] }),
+    ],
+  })), callNode(contractId)),
+  exp({ credential: "sorobanCredentialsAddressWithDelegates", delegate_signatures: 2 }));
+
+writeEntry("benign", "address_is_contract", "Credentials attached to a contract address rather than an account", T,
+  entry(xdr.SorobanCredentials.sorobanCredentialsAddress(addressCredsFor(scAddress(contractId), 5_000_000)), callNode(contractId)),
+  exp({ address: { kind: "contract", contract: contractId } }));
+
+writeEntry("benign", "address_is_muxed", "Credentials on an M… address: reported as its G… key and id", T,
+  entry(xdr.SorobanCredentials.sorobanCredentialsAddress(new xdr.SorobanAddressCredentials({ address: muxedScAddress, nonce: 7n, signatureExpirationLedger: 5_000_000, signature: xdr.ScVal.scvVoid() })), callNode(contractId)),
+  exp({ address: { kind: "account", account: other1, muxedId: "42" } }));
+
+writeEntry("benign", "address_is_claimable_balance", "Credentials on a claimable-balance address: no StrKey codec, reported as hex", T,
+  entry(xdr.SorobanCredentials.sorobanCredentialsAddress(addressCredsFor(xdr.ScAddress.scAddressTypeClaimableBalance(xdr.ClaimableBalanceId.claimableBalanceIdTypeV0(new xdr.Hash(new Uint8Array(32).fill(3)))), 5_000_000)), callNode(contractId)),
+  exp({ address: { kind: "claimable_balance", idHex: balIdHex } }));
+
+writeEntry("benign", "address_is_liquidity_pool", "Credentials on a liquidity-pool address: reported as hex", T,
+  entry(xdr.SorobanCredentials.sorobanCredentialsAddress(addressCredsFor(xdr.ScAddress.scAddressTypeLiquidityPool(new xdr.PoolId(new Uint8Array(32).fill(4))), 5_000_000)), callNode(contractId)),
+  exp({ address: { kind: "liquidity_pool", poolHex } }));
+
+writeEntry("benign", "invocations_nested", "A tree that authorizes a call, and inside it a second contract", T,
+  entry(xdr.SorobanCredentials.sorobanCredentialsSourceAccount(), callNode(contractId, [callNode(contract2)])),
+  exp({ credential: "sorobanCredentialsSourceAccount", address: null, nonce: null, signature_expiration_ledger: null, invocation_nodes: 2, contracts: [contractId, contract2].sort() }));
+
+writeEntry("benign", "invocation_creates_contract", "The tree creates a contract, so there is no existing address to look up", T,
+  entry(xdr.SorobanCredentials.sorobanCredentialsSourceAccount(), createNode()),
+  exp({ credential: "sorobanCredentialsSourceAccount", address: null, nonce: null, signature_expiration_ledger: null, contracts: [], contracts_unchecked: true }));
+
+// A wallet returns its entry with the signature field filled in; that field is
+// not part of what Guard analyzes, and `sameAuthEntry` ignores it.
+writeEntry("hostile", "signature_prefilled", "Entry whose signature field is already populated", T,
+  entry(xdr.SorobanCredentials.sorobanCredentialsAddress(new xdr.SorobanAddressCredentials({
+    address: scAddress(other1), nonce: 7n, signatureExpirationLedger: 5_000_000,
+    signature: xdr.ScVal.scvMap([new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol("hashSig"), val: xdr.ScVal.scvBytes(new Uint8Array(64)) })]),
+  })), callNode(contractId)),
+  exp({}));
+
+writeEntryUnanalyzable("malformed_base64", "Not base64", P, "AAAA%%%not-base64", "decode_failed");
+{
+  const good = entry(xdr.SorobanCredentials.sorobanCredentialsSourceAccount(), callNode(contractId)).toXDR("base64");
+  writeEntryUnanalyzable("truncated_xdr", "Valid entry truncated mid-invocation", P, good.slice(0, Math.floor(good.length / 2)), "decode_failed");
+}
+writeEntryUnanalyzable("oversized", "Base64 longer than Guard's entry ceiling", P, "A".repeat(256 * 1024 + 1), "input_too_large");
+writeEntryUnanalyzable("empty_passphrase", "An entry carries no network, so the passphrase is required", "", entry(xdr.SorobanCredentials.sorobanCredentialsSourceAccount(), callNode(contractId)).toXDR("base64"), "invalid_network_passphrase");
 
 // ---- hostile / edge cases ----
 {

@@ -10,8 +10,11 @@ import type { Finding, FindingCode, Rule } from "./types.ts";
  * snapshot does not say which level, so severity is high; facts name the
  * entity and every role it plays.
  */
-export const counterpartyFlagged: Rule = (_input, _effects, ctx) =>
-  (ctx.hits ?? []).map(
+export const counterpartyFlagged: Rule = (_input, _effects, ctx) => flaggedFindings(ctx.hits ?? []);
+
+/** Shared with `analyzeAuthEntry`, which checks the contracts an entry authorizes. */
+export function flaggedFindings(hits: readonly CounterpartyHit[]): Finding[] {
+  return hits.map(
     (h): Finding => ({
       code: code(h),
       severity: "high",
@@ -20,6 +23,7 @@ export const counterpartyFlagged: Rule = (_input, _effects, ctx) =>
       statement: null,
     }),
   );
+}
 
 function code(h: CounterpartyHit): FindingCode {
   switch (h.type) {

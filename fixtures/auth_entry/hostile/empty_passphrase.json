@@ -1,0 +1,9 @@
+{
+  "name": "empty_passphrase",
+  "description": "An entry carries no network, so the passphrase is required",
+  "network_passphrase": "",
+  "xdr": "AAAAAAAAAAAAAAABBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcAAAAIdHJhbnNmZXIAAAAAAAAAAA==",
+  "expected": {
+    "unanalyzable": "invalid_network_passphrase"
+  }
+}

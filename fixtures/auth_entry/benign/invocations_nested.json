@@ -1,0 +1,19 @@
+{
+  "name": "invocations_nested",
+  "description": "A tree that authorizes a call, and inside it a second contract",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "xdr": "AAAAAAAAAAAAAAABBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcAAAAIdHJhbnNmZXIAAAAAAAAAAQAAAAAAAAABCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgAAAAIdHJhbnNmZXIAAAAAAAAAAA==",
+  "expected": {
+    "credential": "sorobanCredentialsSourceAccount",
+    "address": null,
+    "nonce": null,
+    "signature_expiration_ledger": null,
+    "delegate_signatures": 0,
+    "invocation_nodes": 2,
+    "contracts": [
+      "CADQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQOBYHA4DQP5KR",
+      "CAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQMCJ"
+    ],
+    "contracts_unchecked": false
+  }
+}
