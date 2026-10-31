@@ -22,10 +22,11 @@ node examples/wallet-adapter/sign.mts --path auth_entry --approve --signature # 
 | `--path transaction\|auth_entry` | Which signing path to run. Default `transaction`. |
 | `--approve` | The review callback returns `true`. Without it the review declines and the wallet is never called. |
 | `--tamper` | The stub wallet returns *different* bytes than it was shown. |
-| `--signature` | With `--path auth_entry`, the stub wallet answers like Freighter does: a bare 64-byte signature, which carries no payload to compare. |
+| `--signature` | With `--path auth_entry`, the stub wallet answers like Freighter does: a bare 64-byte signature instead of an entry. Guard checks it against the payload the analyzed entry implies, and the stub's bytes are not that signature. |
 
-Exit code 0 means `outcome: signed` with the analyzed bytes; 1 means the sample
-ran and the signing did not complete as analyzed (`signed_other_bytes`,
+Exit code 0 means `outcome: signed` with the analyzed bytes, or
+`signed_preimage_verified`; 1 means the sample ran and the signing did not
+complete as analyzed (`signed_other_bytes`, `signed_preimage_mismatch`,
 `signed_unverifiable` or `not_signed`); 2 is a bad argument.
 
 ## What the sample shows
@@ -87,27 +88,41 @@ switch (result.outcome) {
 }
 ```
 
-`guardSignAuthEntry` is that shape plus one more arm, because SEP-43 is not
+`guardSignAuthEntry` is that shape plus three more arms, because SEP-43 is not
 consistent about what `signAuthEntry` exchanges:
 
 ```ts
 switch (result.outcome) {
-  case "signed":             // an entry came back, and it is the one analyzed
-  case "signed_other_bytes": // a different entry came back
-  case "signed_unverifiable": // shape: "signature" | "other" — the reply carries no
-                             // payload to compare, so nothing here can say what was
-                             // signed. Freighter answers this way: it is given the
-                             // entry's preimage and returns a bare Ed25519 signature,
-                             // which the dApp assembles into an entry itself.
-  case "not_signed":         // same reason codes as above
+  case "signed":                // an entry came back, and it is the one analyzed
+  case "signed_other_bytes":    // a different entry came back
+  case "signed_preimage_verified": // a bare signature came back, and it is the
+                                // analyzed entry's authorization: the key its
+                                // credentials name signed the payload those
+                                // credentials imply (this tree, this network,
+                                // until that ledger). Freighter answers this way:
+                                // given the entry's preimage it returns a bare
+                                // Ed25519 signature, which the dApp assembles
+                                // into an entry itself.
+  case "signed_preimage_mismatch": // a bare signature, and it is not that
+                                // authorization
+  case "signed_unverifiable":   // reason: entry_undecodable | reply_not_a_signature
+                                // | credential_has_no_signature | credential_not_ed25519
+  case "not_signed":            // same reason codes as above
 }
 ```
 
-`signed_unverifiable` is `partial`, never `signed`: an analysis of the entry does
-not describe a signature, and reporting it as a mismatch would claim the wallet
-signed other bytes when all we know is that it answered in the other reading of
-the spec. Guard passes a base64 `SorobanAuthorizationEntry`, because that is the
-only form whose authorized call tree it can analyze.
+`signed_preimage_verified` carries `authorizedBy`, the address the entry's
+credentials name, because that key is what the check verified against; the
+wallet's own `signerAddress` claim is reported alongside it and is not what the
+verdict rests on. Only the top-level credential is checked, so the entry the dApp
+assembles still needs its delegate signatures, and a custom account may authorize
+in a way no offline check can follow.
+
+`signed_unverifiable` and `signed_preimage_mismatch` are `partial`, never
+`signed`: an analysis of the entry does not describe other bytes, and reporting a
+signature as merely unknown would waste a check that can be made. Guard passes a
+base64 `SorobanAuthorizationEntry`, because that is the only form whose authorized
+call tree it can analyze.
 
 Both entries and transactions: an authorization entry carries no ledger effects,
 so its analysis is always `partial`, and its findings are limited to the

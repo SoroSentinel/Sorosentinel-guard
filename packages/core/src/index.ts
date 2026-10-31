@@ -12,7 +12,14 @@ export {
   decodeAuthEntry,
 } from "./decode/auth-entry.ts";
 export type { AuthEntryAddress, AuthEntryDecodeResult, DecodedAuthEntry } from "./decode/auth-entry.ts";
-export { isAuthEntry, isSignatureLength, sameAuthEntry, sameTransactionPayload } from "./decode/signing-payload.ts";
+export {
+  isAuthEntry,
+  isSignatureLength,
+  sameAuthEntry,
+  sameTransactionPayload,
+  verifyAuthEntrySignature,
+} from "./decode/signing-payload.ts";
+export type { ReplyVerification, UnverifiableReply } from "./decode/signing-payload.ts";
 export { deriveEffects } from "./effects/derive.ts";
 export type * from "./effects/types.ts";
 export { analyze, analyzeAsync, analyzeAuthEntry } from "./analyze.ts";

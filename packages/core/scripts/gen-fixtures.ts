@@ -310,6 +310,13 @@ writeEntry("benign", "credential_address", "Address credentials signing for a Gâ
   entry(xdr.SorobanCredentials.sorobanCredentialsAddress(addressCredsFor(scAddress(other1), 5_000_000)), callNode(contractId)),
   exp({}));
 
+// The same arm for a key whose seed this script documents: `other1` is a
+// synthetic public key with no secret behind it, so nothing can sign for it, and
+// the preimage-verification tests need an entry a real keypair does authorize.
+writeEntry("benign", "credential_address_test_key", "Address credentials for a key the test seeds can sign (testKey(1))", T,
+  entry(xdr.SorobanCredentials.sorobanCredentialsAddress(addressCredsFor(scAddress(S), 5_000_000)), callNode(contractId)),
+  exp({ address: { kind: "account", account: S, muxedId: null } }));
+
 writeEntry("benign", "credential_address_v2", "Address V2 credentials (CAP-71 address binding)", T,
   entry(xdr.SorobanCredentials.sorobanCredentialsAddressV2(addressCredsFor(scAddress(other1), 5_000_000)), callNode(contractId)),
   exp({ credential: "sorobanCredentialsAddressV2" }));

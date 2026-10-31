@@ -100,8 +100,16 @@ function printOutcome(r: GuardedSignTransaction | GuardedSignAuthEntry): void {
     console.log("outcome: the wallet signed, but not the analyzed bytes, so the analysis above does not describe them (status=partial)");
     return;
   }
+  if (r.outcome === "signed_preimage_verified") {
+    console.log(`outcome: the wallet's bare signature authorizes exactly the entry analyzed above (status=${r.status})`);
+    return;
+  }
+  if (r.outcome === "signed_preimage_mismatch") {
+    console.log("outcome: the wallet signed, but not the analyzed entry's authorization payload, so the analysis above does not describe what it signed (status=partial)");
+    return;
+  }
   if (r.outcome === "signed_unverifiable") {
-    console.log(`outcome: the wallet returned ${r.shape === "signature" ? "a bare signature" : "bytes that are not an auth entry"}, which carries no payload to compare with the analyzed entry (status=partial)`);
+    console.log(`outcome: the wallet's reply carries nothing that could be related to the analyzed entry (reason=${r.reason}, status=partial)`);
     return;
   }
   // Only a wallet's own text reaches the console, and only sanitized: reason
@@ -130,7 +138,8 @@ const wallet: Sep43Signer = {
     console.log(`wallet: signAuthEntry asked for ${authEntryBase64.length} base64 chars`);
     // --signature is Freighter's reading of SEP-43: it was handed the entry's
     // preimage, so it answers with the signature alone and the dApp assembles
-    // the entry. Those 64 bytes say nothing about what they signed.
+    // the entry. Guard can still check those 64 bytes against the payload the
+    // analyzed entry implies; these ones are not it, and the stub signs nothing.
     if (args.signature) {
       const signatureOnly = btoa(String.fromCharCode(...new Uint8Array(64).fill(8)));
       return { signedAuthEntry: signatureOnly, ...(signerAddress === null ? {} : { signerAddress }) };
@@ -151,4 +160,6 @@ const result =
     : await guardSignAuthEntry(wallet, analyzed.xdr, { networkPassphrase: analyzed.network_passphrase }, (a) => review(a));
 
 printOutcome(result);
-process.exitCode = result.outcome === "signed" ? 0 : 1;
+// 0 only when what was analyzed is what was authorized: the same bytes, or a
+// bare signature checked against the payload those bytes imply.
+process.exitCode = result.outcome === "signed" || result.outcome === "signed_preimage_verified" ? 0 : 1;
