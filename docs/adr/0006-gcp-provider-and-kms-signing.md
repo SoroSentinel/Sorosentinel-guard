@@ -56,6 +56,13 @@ vector, 221 B in the worst legal case) + **16 B per entry**.
 - OE4 said "add deltas and a manifest when measured size or rotation need
   appears". The 4 KiB ceiling and the ≤20,500-new-assets/day figure below are
   that measurement arriving; deltas and a manifest remain cut for v1.
+- The log-based alert routing decided here is now executable: the conditions and
+  their thresholds are the table in `internal/monitoring/alerts.go`, and
+  `make gen-alerts` writes the Cloud Logging metrics and alerting policies into
+  `deploy/monitoring/` for an operator to apply. Choosing log-based rules over a
+  scrape endpoint is also why no new listener or dependency appeared: both would
+  have needed a §10 ask, and every failure mode this watches is already a log
+  statement.
 
 ## Measured inputs
 

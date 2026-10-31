@@ -522,13 +522,14 @@ Cloud provider: **undecided** (open question). Nothing in the design requires a 
 - **Scan:** autoscaled worker pool consuming jobs; each job in an isolated container.
 - **Guard:** distributed as npm package; no server-side deployment (except optional docs/demo site).
 - **Backups:** Postgres PITR; object store versioning; snapshot history retained.
-- **SLOs:** per PRD §7; alert on ingest lag (> N ledgers), snapshot age, scan queue age, verdict-engine error rate.
+- **SLOs:** per PRD §7; alert on ingest lag (> N ledgers), snapshot age, scan queue age, verdict-engine error rate. The v1 set, with thresholds, is the table in §11; scan queue age has nothing to watch yet, because Scan is a one-shot job in v1 rather than a queue.
 - **Cost watch-outs:** RPC provider rate limits for Guard simulation (integrator-supplied endpoint); lake/BigQuery scan costs for backfill.
 
 ---
 
 ## 11. Observability
 
+- **v1 alerting is log-based and generated.** `internal/monitoring/alerts.go` is the table of conditions (ingestion halt and its causes, ledger gap, undecodable XDR, lost writer lock, signing and publish failure, snapshot age, API error rate, panics, stopped processes) plus the threshold each is watched at. `make gen-alerts` writes `deploy/monitoring/log-metrics.json` and `deploy/monitoring/alert-policies.json` from it, a test fails when the committed files and the table disagree or when a rule keys on a log line nothing emits, and an operator applies the pair (ADR 0006). Actions live in `docs/runbooks/oncall-alerts.md`, one section per alert, and the generated rules link to those anchors. No scrape endpoint: a new one is an AGENTS.md §10 "ask first" item, and every failure mode here is already a log statement.
 - Metrics: ingest lag, ledgers/sec, detector hit rates, verdict counts by level, snapshot size/age, API latency, Guard-provided opt-in counters, scan duration/failure rate.
 - Tracing across Intel↔Scan callbacks via propagated trace IDs.
 - Quality dashboards: dispute rate, overturn rate, detector precision (from labeled corpus + review outcomes).
