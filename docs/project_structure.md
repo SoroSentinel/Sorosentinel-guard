@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | **Status** | Draft v0.1 (proposal; nothing is scaffolded yet) |
-| **Date** | 2026-10-26 |
+| **Date** | 2026-10-31 |
 | **Applies to** | `sorosentinel-intel` (Go), `sorosentinel-scan` (Rust), `sorosentinel-guard` (TypeScript) |
 | **Reads with** | `ARCHITECTURE_ESSENTIALS.md` (v1 cut list overrides full architecture), `AGENTS.md` |
 
@@ -48,6 +48,7 @@ Org: **SoroSentinel**. Repos are `sorosentinel-intel`, `sorosentinel-scan`, `sor
 | `make gen` | Code generation (Intel: schemas → packages; Scan/Guard: no-op or fetch pinned schema package) |
 | `make verify` | `lint` + `test` + `test-contract` + (repo-specific checks). **The command an agent runs before saying "done."** |
 | `make fuzz` | Scan only: run fuzz targets for a bounded time |
+| `make gen-alerts` | Intel only: rewrite `deploy/monitoring/` from the alert table in `internal/monitoring` (a test fails if the committed files and the table disagree) |
 
 The Makefile is a thin wrapper over native tooling (`go`, `cargo`, `pnpm`). Native commands stay usable.
 
@@ -104,6 +105,8 @@ sorosentinel-intel/
 │   ├── intel-ingest/          # ingestion worker (single writer, leader lock)
 │   ├── intel-worker/          # verdict recompute, snapshot publish, domain re-verify, scan-job dispatch
 │   ├── intelctl/              # admin CLI: review queue, verdict actions, dispute log (manual process)
+│   ├── intel-fuzz-seeds/      # one-shot: harvest contract WASM from RPC into fuzz seed corpora
+│   ├── gen-alerts/            # rewrite deploy/monitoring/ from internal/monitoring's alert table
 │   └── wordlint/              # template + blocklist lint (also run in CI)
 │
 ├── internal/
@@ -128,6 +131,7 @@ sorosentinel-intel/
 │   ├── snapshot/              # build, sign (KMS), publish
 │   ├── api/                   # handlers, auth (API keys), rate limiting
 │   ├── store/                 # postgres/, objectstore/
+│   ├── monitoring/            # alert table: ids, log fields, thresholds; generates deploy/monitoring/
 │   └── platform/              # config, logging, kms, clock (injectable; no wall clock in verdict code)
 │
 ├── schemas/                   # THE source of truth for cross-repo contracts
@@ -148,13 +152,14 @@ sorosentinel-intel/
 ├── testdata/                  # ledger ranges, stellar.toml samples, hostile responses
 ├── deploy/
 │   ├── docker/                # Dockerfiles per cmd/
+│   ├── monitoring/            # GENERATED log-metrics.json + alert-policies.json (make gen-alerts)
 │   └── terraform/             # single-cloud IaC (provider TBD)
 ├── scripts/                   # sync-docs.sh, local-dev helpers
 └── docs/                      # CANONICAL docs (§2.1)
     ├── PRD.md  ARCHITECTURE.md  ARCHITECTURE_ESSENTIALS.md  project_structure.md
     ├── agents/                # core.md + three profiles
     ├── adr/                   # 0001-title.md ...
-    ├── runbooks/              # protocol-upgrade.md, snapshot-key-rotation.md, ingest-gap-recovery.md
+    ├── runbooks/              # protocol-upgrade.md, snapshot-key-rotation.md, ingest-gap-recovery.md, oncall-alerts.md
     └── methodology/           # PUBLIC page source: what each signal means, how to request a review
 ```
 
