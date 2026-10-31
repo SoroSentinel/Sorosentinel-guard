@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { xdr } from "@stellar/stellar-sdk/base";
+import { Keypair, buildAuthorizationEntryPreimage, hash, xdr } from "@stellar/stellar-sdk/base";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -16,6 +16,7 @@ import {
 const TX = new URL("../../../fixtures/tx/", import.meta.url);
 const ENTRIES = new URL("../../../fixtures/auth_entry/", import.meta.url);
 const TESTNET = "Test SDF Network ; September 2015";
+const PUBLIC = "Public Global Stellar Network ; September 2015";
 
 const envelope = JSON.parse(readFileSync(new URL("benign/payment_native.json", TX), "utf8")) as { xdr: string };
 const otherTx = JSON.parse(readFileSync(new URL("benign/create_account.json", TX), "utf8")) as { xdr: string };
@@ -23,6 +24,40 @@ const feeBump = JSON.parse(readFileSync(new URL("hostile/fee_bump.json", TX), "u
 const authEntry = JSON.parse(readFileSync(new URL("benign/credential_address.json", ENTRIES), "utf8")) as { xdr: string };
 const signedAuthEntry = JSON.parse(readFileSync(new URL("hostile/signature_prefilled.json", ENTRIES), "utf8")) as { xdr: string };
 const otherAuthEntry = JSON.parse(readFileSync(new URL("benign/address_is_contract.json", ENTRIES), "utf8")) as { xdr: string };
+const sourceAccountAuthEntry = JSON.parse(readFileSync(new URL("benign/credential_source_account.json", ENTRIES), "utf8")) as { xdr: string };
+/** The only fixture whose credential address a test can sign for: its key is `testKey(1)`. */
+const signableAuthEntry = JSON.parse(readFileSync(new URL("benign/credential_address_test_key.json", ENTRIES), "utf8")) as { xdr: string; expected: { signature_expiration_ledger: number } };
+const SIGNABLE_EXPIRY = signableAuthEntry.expected.signature_expiration_ledger;
+
+/** The fixture keys (gen-fixtures.ts `testKey`). */
+const testKey = (byte: number) => Keypair.fromRawEd25519Seed(new Uint8Array(32).fill(byte));
+
+/**
+ * What a preimage-reading wallet answers: the signature over the entry's
+ * authorization payload, and nothing else. The derivation is the pinned SDK's own,
+ * so what is under test here is the adapter's dispatch; `test/auth-preimage.test.ts`
+ * pins the payload itself against the CAPs.
+ */
+function signPreimage(entryBase64: string, by: Keypair, passphrase = TESTNET): string {
+  const entry = xdr.SorobanAuthorizationEntry.fromXDR(entryBase64, "base64");
+  const preimage = buildAuthorizationEntryPreimage(entry, SIGNABLE_EXPIRY, passphrase);
+  return btoa(String.fromCharCode(...by.sign(hash(preimage.toXdr()))));
+}
+
+/** The entry with one of its payload-bound fields changed, so a signature over the original must not read as valid. */
+function change(entryBase64: string, what: "nonce" | "expiry" | "tree"): string {
+  const e = xdr.SorobanAuthorizationEntry.fromXDR(entryBase64, "base64");
+  if (e.credentials.type !== "sorobanCredentialsAddress") throw new Error("fixture is not address credentials");
+  const c = e.credentials.address;
+  const creds = new xdr.SorobanAddressCredentials({
+    address: c.address,
+    nonce: what === "nonce" ? c.nonce + 1n : c.nonce,
+    signatureExpirationLedger: what === "expiry" ? c.signatureExpirationLedger + 1 : c.signatureExpirationLedger,
+    signature: xdr.ScVal.scvVoid(),
+  });
+  const root = what === "tree" ? new xdr.SorobanAuthorizedInvocation({ function: e.rootInvocation.function, subInvocations: [e.rootInvocation] }) : e.rootInvocation;
+  return new xdr.SorobanAuthorizationEntry({ credentials: xdr.SorobanCredentials.sorobanCredentialsAddress(creds), rootInvocation: root }).toXDR("base64");
+}
 
 const ctx = { networkPassphrase: TESTNET };
 const approve = () => true;
@@ -237,24 +272,67 @@ describe("guardSignAuthEntry", () => {
     expect(r.analysis.address).toEqual({ kind: "account", account: expect.any(String), muxedId: null });
   });
 
-  it("a wallet that answers with a bare signature is unverifiable, not accusably different", async () => {
-    // Freighter reads the parameter as the entry's preimage and signs it, so it
-    // hands back 64 bytes and nothing else: no payload, so no comparison is
-    // possible. The findings from the analysis must survive all the same.
+  it("a bare signature is checked against the analyzed entry's payload, not called unknowable", async () => {
+    // Freighter reads the parameter as the entry's preimage and hands back 64
+    // bytes. Those bytes are checkable: either the key the credentials name
+    // signed this entry's payload or it did not. The findings must survive either way.
     const signatureOnly = btoa(String.fromCharCode(...new Uint8Array(64).fill(8)));
     const { wallet, calls } = entryWallet({ signedAuthEntry: signatureOnly, signerAddress: "G-signer" });
     const r = await guardSignAuthEntry(wallet, authEntry.xdr, ctx, approve);
     expect(calls[0]?.xdr).toBe(authEntry.xdr);
-    expect(r).toMatchObject({ outcome: "signed_unverifiable", status: "partial", signedAuthEntry: signatureOnly, signerAddress: "G-signer", shape: "signature" });
-    if (r.outcome !== "signed_unverifiable") throw new Error("expected an unverifiable reply");
+    expect(r).toMatchObject({ outcome: "signed_preimage_mismatch", status: "partial", signature: signatureOnly });
+    if (r.outcome !== "signed_preimage_mismatch") throw new Error("expected a mismatch");
+    // The wallet's own claim about who signed is not what the verdict rests on.
+    expect(r.signerAddress).toBe("G-signer");
     expect(r.analysis.notChecked).toContain("NC-EXECUTION-TIME");
+  });
+
+  it("verifies a bare signature the analyzed entry's own key made", async () => {
+    const signature = signPreimage(signableAuthEntry.xdr, testKey(1));
+    const { wallet } = entryWallet({ signedAuthEntry: signature });
+    const r = await guardSignAuthEntry(wallet, signableAuthEntry.xdr, ctx, approve);
+    expect(r).toMatchObject({ outcome: "signed_preimage_verified", signature, authorizedBy: testKey(1).publicKey(), signerAddress: null });
+    if (r.outcome !== "signed_preimage_verified") throw new Error("expected a verified reply");
+    expect(r.status).toBe(r.analysis.status);
+    expect(r.analysis.notChecked).toContain("NC-EXECUTION-TIME");
+  });
+
+  it.each(["nonce", "expiry", "tree"] as const)("is a mismatch once the %s the payload commits to changes", async (what) => {
+    const signature = signPreimage(signableAuthEntry.xdr, testKey(1));
+    const mutated = change(signableAuthEntry.xdr, what);
+    const { wallet, calls } = entryWallet({ signedAuthEntry: signature });
+    const r = await guardSignAuthEntry(wallet, mutated, ctx, approve);
+    // The user saw one entry; these are the bytes that would go on the network.
+    expect(calls[0]?.xdr).toBe(mutated);
+    expect(r).toMatchObject({ outcome: "signed_preimage_mismatch", status: "partial", authorizedBy: testKey(1).publicKey() });
+  });
+
+  it("is a mismatch for a signature by another key, or for another network", async () => {
+    for (const signature of [signPreimage(signableAuthEntry.xdr, testKey(2)), signPreimage(signableAuthEntry.xdr, testKey(1), PUBLIC)]) {
+      const { wallet } = entryWallet({ signedAuthEntry: signature });
+      const r = await guardSignAuthEntry(wallet, signableAuthEntry.xdr, ctx, approve);
+      expect(r).toMatchObject({ outcome: "signed_preimage_mismatch", status: "partial", authorizedBy: testKey(1).publicKey() });
+    }
+  });
+
+  it("an entry whose credentials name no ed25519 key, or no signature at all, stays unverifiable", async () => {
+    const signatureOnly = btoa(String.fromCharCode(...new Uint8Array(64).fill(8)));
+    const cases: [string, string][] = [
+      [otherAuthEntry.xdr, "credential_not_ed25519"],
+      [sourceAccountAuthEntry.xdr, "credential_has_no_signature"],
+    ];
+    for (const [entry, reason] of cases) {
+      const { wallet } = entryWallet({ signedAuthEntry: signatureOnly });
+      const r = await guardSignAuthEntry(wallet, entry, ctx, approve);
+      expect(r).toMatchObject({ outcome: "signed_unverifiable", status: "partial", reason });
+    }
   });
 
   it("a reply that is neither an entry nor signature-length is still partial", async () => {
     for (const junk of ["AAAA", "not base64 %%%%", btoa("a signature shorter than 64 bytes")]) {
       const { wallet } = entryWallet({ signedAuthEntry: junk });
       const r = await guardSignAuthEntry(wallet, authEntry.xdr, ctx, approve);
-      expect(r).toMatchObject({ outcome: "signed_unverifiable", status: "partial", signedAuthEntry: junk, shape: "other" });
+      expect(r).toMatchObject({ outcome: "signed_unverifiable", status: "partial", signedAuthEntry: junk, reason: "reply_not_a_signature" });
     }
   });
 

@@ -2,13 +2,14 @@ import {
   analyze,
   analyzeAuthEntry,
   isAuthEntry,
-  isSignatureLength,
   sameAuthEntry,
   sameTransactionPayload,
+  verifyAuthEntrySignature,
   type AnalyzeContext,
   type AnalysisResult,
   type AnalysisStatus,
   type AuthEntryAnalysisResult,
+  type UnverifiableReply,
 } from "@sorosentinel/guard-core";
 
 import {
@@ -55,15 +56,31 @@ export type GuardedSignAuthEntry =
   /** The wallet returned an auth entry, and it is not the one that was analyzed. */
   | { outcome: "signed_other_bytes"; status: "partial"; analysis: AuthEntryAnalysisResult; signedAuthEntry: string; signerAddress: string | null }
   /**
-   * The wallet returned bytes that are not an auth entry, so nothing here can
+   * The wallet returned bytes that are not an auth entry, and nothing here can
    * relate them to what was analyzed. SEP-43 describes `signAuthEntry` both as
    * taking an entry and as taking its preimage, and Freighter implements the
    * preimage reading: it returns a bare Ed25519 signature, which the dApp
-   * assembles into an entry itself. A signature carries no payload, so `shape`
-   * records what was seen and the result stays `partial` — never `signed`, and
-   * never a claim that the wallet signed something else.
+   * assembles into an entry itself. `reason` names the check that could not be
+   * made; the result stays `partial` — never `signed`, and never a claim that
+   * the wallet signed something else.
    */
-  | { outcome: "signed_unverifiable"; status: "partial"; analysis: AuthEntryAnalysisResult; signedAuthEntry: string; signerAddress: string | null; shape: "signature" | "other" }
+  | { outcome: "signed_unverifiable"; status: "partial"; analysis: AuthEntryAnalysisResult; signedAuthEntry: string; signerAddress: string | null; reason: UnverifiableReply }
+  /**
+   * The wallet returned a bare signature, and it is this entry's authorization:
+   * `authorizedBy`, the address the entry's credentials name, has signed the
+   * payload those credentials imply — this invocation tree, on this network,
+   * until that ledger. `status` is the analysis' own, as for `signed`; the entry
+   * the network needs is still the dApp's to assemble, because Guard assembles
+   * nothing and holds no key. `signerAddress` is the wallet's own claim and is
+   * not what this verdict rests on.
+   */
+  | { outcome: "signed_preimage_verified"; status: AnalysisStatus; analysis: AuthEntryAnalysisResult; signature: string; authorizedBy: string; signerAddress: string | null }
+  /**
+   * The wallet returned a bare signature, and it is not this entry's
+   * authorization for `authorizedBy`: a different tree, nonce, ledger bound,
+   * network, or key. Reportable rather than unknown, and still `partial`.
+   */
+  | { outcome: "signed_preimage_mismatch"; status: "partial"; analysis: AuthEntryAnalysisResult; signature: string; authorizedBy: string; signerAddress: string | null }
   /** Nothing was signed. */
   | { outcome: "not_signed"; reason: NotSignedReason; status: AnalysisStatus; analysis: AuthEntryAnalysisResult; walletError: Sep43Error | null };
 
@@ -107,9 +124,11 @@ export async function guardSignTransaction(
  * As `guardSignTransaction`, for SEP-43's `signAuthEntry`.
  *
  * Guard passes a base64 `SorobanAuthorizationEntry`, because that is the only
- * form whose authorized call tree it can analyze; a wallet that expects the
- * entry's preimage instead answers with a bare signature, reported here as
- * `signed_unverifiable`.
+ * form whose authorized call tree it can analyze. A wallet that expects the
+ * entry's preimage instead answers with a bare signature; that reply is checked
+ * against the preimage the analyzed entry implies, so it can come back
+ * `signed_preimage_verified`, `signed_preimage_mismatch`, or
+ * `signed_unverifiable` with the reason nothing could be checked.
  */
 export async function guardSignAuthEntry(
   wallet: Pick<Sep43Signer, "signAuthEntry">,
@@ -138,14 +157,14 @@ export async function guardSignAuthEntry(
   if (isAuthEntry(signedAuthEntry)) {
     return { outcome: "signed_other_bytes", status: "partial", analysis, signedAuthEntry, signerAddress };
   }
-  return {
-    outcome: "signed_unverifiable",
-    status: "partial",
-    analysis,
-    signedAuthEntry,
-    signerAddress,
-    shape: isSignatureLength(signedAuthEntry) ? "signature" : "other",
-  };
+  const check = verifyAuthEntrySignature(authEntryBase64, signedAuthEntry, ctx.networkPassphrase);
+  if (check.verdict === "verified") {
+    return { outcome: "signed_preimage_verified", status: analysis.status, analysis, signature: signedAuthEntry, authorizedBy: check.authorizedBy, signerAddress };
+  }
+  if (check.verdict === "mismatch") {
+    return { outcome: "signed_preimage_mismatch", status: "partial", analysis, signature: signedAuthEntry, authorizedBy: check.authorizedBy, signerAddress };
+  }
+  return { outcome: "signed_unverifiable", status: "partial", analysis, signedAuthEntry, signerAddress, reason: check.reason };
 }
 
 async function approved<A>(review: Review<A>, analysis: A, xdrBase64: string): Promise<boolean> {
