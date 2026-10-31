@@ -2,6 +2,9 @@ import { xdr } from "@stellar/stellar-sdk/base";
 
 import { assertNever } from "../assert-never.ts";
 
+const EQUALS = 0x3d; // "="
+const STANDARD_BASE64 = /^[A-Za-z0-9+/]+$/;
+
 /**
  * Did the wallet sign exactly the bytes that were analyzed (AGENTS.md §3.8)?
  *
@@ -28,6 +31,30 @@ export function sameAuthEntry(analyzedBase64: string, returnedBase64: string): b
   const a = signatureless(analyzeEntry(analyzedBase64));
   const b = signatureless(analyzeEntry(returnedBase64));
   return a !== null && b !== null && sameBytes(a, b);
+}
+
+/** Whether the base64 parses at all as a `SorobanAuthorizationEntry`. */
+export function isAuthEntry(base64: string): boolean {
+  return analyzeEntry(base64) !== null;
+}
+
+/**
+ * Whether the base64 is the encoding of exactly 64 bytes, the length of an
+ * Ed25519 signature. A statement about length only: nothing here proves what
+ * those bytes sign, which is why `sameAuthEntry` cannot be used on them.
+ */
+export function isSignatureLength(base64: string): boolean {
+  // Padding is scanned from the end rather than stripped with a regex: this
+  // string comes from a wallet, and `=+$` backtracks over a run of `=`.
+  let body = base64.length;
+  while (body > 0 && base64.charCodeAt(body - 1) === EQUALS) body--;
+  const pads = base64.length - body;
+  if (pads > 2) return false;
+  if (pads > 0 && base64.length % 4 !== 0) return false;
+  // Length decides first, so the charset is only ever tested on the ~88
+  // characters that could still be a signature.
+  if (Math.floor((body * 3) / 4) !== 64) return false;
+  return STANDARD_BASE64.test(base64.slice(0, body));
 }
 
 function analyze(envelopeBase64: string): xdr.TransactionEnvelope | null {

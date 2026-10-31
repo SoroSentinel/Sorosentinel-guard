@@ -1,6 +1,8 @@
 import {
   analyze,
   analyzeAuthEntry,
+  isAuthEntry,
+  isSignatureLength,
   sameAuthEntry,
   sameTransactionPayload,
   type AnalyzeContext,
@@ -50,7 +52,19 @@ export type GuardedSignTransaction =
 
 export type GuardedSignAuthEntry =
   | { outcome: "signed"; analyzedBytesMatch: true; status: AnalysisStatus; analysis: AuthEntryAnalysisResult; signedAuthEntry: string; signerAddress: string | null }
+  /** The wallet returned an auth entry, and it is not the one that was analyzed. */
   | { outcome: "signed_other_bytes"; status: "partial"; analysis: AuthEntryAnalysisResult; signedAuthEntry: string; signerAddress: string | null }
+  /**
+   * The wallet returned bytes that are not an auth entry, so nothing here can
+   * relate them to what was analyzed. SEP-43 describes `signAuthEntry` both as
+   * taking an entry and as taking its preimage, and Freighter implements the
+   * preimage reading: it returns a bare Ed25519 signature, which the dApp
+   * assembles into an entry itself. A signature carries no payload, so `shape`
+   * records what was seen and the result stays `partial` — never `signed`, and
+   * never a claim that the wallet signed something else.
+   */
+  | { outcome: "signed_unverifiable"; status: "partial"; analysis: AuthEntryAnalysisResult; signedAuthEntry: string; signerAddress: string | null; shape: "signature" | "other" }
+  /** Nothing was signed. */
   | { outcome: "not_signed"; reason: NotSignedReason; status: AnalysisStatus; analysis: AuthEntryAnalysisResult; walletError: Sep43Error | null };
 
 /**
@@ -89,7 +103,14 @@ export async function guardSignTransaction(
   return { outcome: "signed", analyzedBytesMatch: true, status: analysis.status, analysis, signedTxXdr, signerAddress };
 }
 
-/** As `guardSignTransaction`, for SEP-43's `signAuthEntry`. */
+/**
+ * As `guardSignTransaction`, for SEP-43's `signAuthEntry`.
+ *
+ * Guard passes a base64 `SorobanAuthorizationEntry`, because that is the only
+ * form whose authorized call tree it can analyze; a wallet that expects the
+ * entry's preimage instead answers with a bare signature, reported here as
+ * `signed_unverifiable`.
+ */
 export async function guardSignAuthEntry(
   wallet: Pick<Sep43Signer, "signAuthEntry">,
   authEntryBase64: string,
@@ -111,10 +132,20 @@ export async function guardSignAuthEntry(
   const signedAuthEntry = response.signedAuthEntry;
   if (typeof signedAuthEntry !== "string" || signedAuthEntry.length === 0) return notSignedEntry("wallet_no_signed_bytes", analysis, null);
   const signerAddress = typeof response.signerAddress === "string" ? response.signerAddress : null;
-  if (!sameAuthEntry(authEntryBase64, signedAuthEntry)) {
+  if (sameAuthEntry(authEntryBase64, signedAuthEntry)) {
+    return { outcome: "signed", analyzedBytesMatch: true, status: analysis.status, analysis, signedAuthEntry, signerAddress };
+  }
+  if (isAuthEntry(signedAuthEntry)) {
     return { outcome: "signed_other_bytes", status: "partial", analysis, signedAuthEntry, signerAddress };
   }
-  return { outcome: "signed", analyzedBytesMatch: true, status: analysis.status, analysis, signedAuthEntry, signerAddress };
+  return {
+    outcome: "signed_unverifiable",
+    status: "partial",
+    analysis,
+    signedAuthEntry,
+    signerAddress,
+    shape: isSignatureLength(signedAuthEntry) ? "signature" : "other",
+  };
 }
 
 async function approved<A>(review: Review<A>, analysis: A, xdrBase64: string): Promise<boolean> {

@@ -43,26 +43,29 @@ interface Args {
   path: keyof typeof SETS;
   approve: boolean;
   tamper: boolean;
+  signature: boolean;
 }
 
 function usage(message: string): never {
   console.error(message);
-  console.error("usage: node examples/wallet-adapter/sign.mts [--path transaction|auth_entry] [--approve] [--tamper]");
+  console.error("usage: node examples/wallet-adapter/sign.mts [--path transaction|auth_entry] [--approve] [--tamper] [--signature]");
   process.exit(2);
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  const args: Args = { path: "transaction", approve: false, tamper: false };
+  const args: Args = { path: "transaction", approve: false, tamper: false, signature: false };
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
     if (flag === "--approve") args.approve = true;
     else if (flag === "--tamper") args.tamper = true;
+    else if (flag === "--signature") args.signature = true;
     else if (flag === "--path") {
       const value = argv[++i];
       if (value !== "transaction" && value !== "auth_entry") usage(`--path needs transaction or auth_entry, got ${value ?? ""}`);
       args.path = value;
     } else usage(`unknown argument ${flag}`);
   }
+  if (args.signature && args.path !== "auth_entry") usage("--signature answers signAuthEntry, so pass --path auth_entry too");
   return args;
 }
 
@@ -97,6 +100,10 @@ function printOutcome(r: GuardedSignTransaction | GuardedSignAuthEntry): void {
     console.log("outcome: the wallet signed, but not the analyzed bytes, so the analysis above does not describe them (status=partial)");
     return;
   }
+  if (r.outcome === "signed_unverifiable") {
+    console.log(`outcome: the wallet returned ${r.shape === "signature" ? "a bare signature" : "bytes that are not an auth entry"}, which carries no payload to compare with the analyzed entry (status=partial)`);
+    return;
+  }
   // Only a wallet's own text reaches the console, and only sanitized: reason
   // codes are Guard's, wording is the integrator's renderer's job.
   const said = r.walletError === null ? "" : ` wallet_said(code=${r.walletError.code})="${sanitizeUntrusted(r.walletError.message)}"`;
@@ -121,6 +128,13 @@ const wallet: Sep43Signer = {
   },
   async signAuthEntry(authEntryBase64) {
     console.log(`wallet: signAuthEntry asked for ${authEntryBase64.length} base64 chars`);
+    // --signature is Freighter's reading of SEP-43: it was handed the entry's
+    // preimage, so it answers with the signature alone and the dApp assembles
+    // the entry. Those 64 bytes say nothing about what they signed.
+    if (args.signature) {
+      const signatureOnly = btoa(String.fromCharCode(...new Uint8Array(64).fill(8)));
+      return { signedAuthEntry: signatureOnly, ...(signerAddress === null ? {} : { signerAddress }) };
+    }
     return { signedAuthEntry: args.tamper ? other.xdr : authEntryBase64, ...(signerAddress === null ? {} : { signerAddress }) };
   },
 };

@@ -27,7 +27,7 @@ Items marked **verify** were not confirmed against primary docs and must be chec
 | F7 | Soroban contracts are WASM modules; deployed WASM embeds contract spec/meta in custom sections (e.g., `contractspecv0`, `contractenvmetav0`, `contractmetav0`) | [Likely], **verify** section names |
 | F8 | WASM host-function imports use compact module/function identifiers mapped via the env interface in `soroban-env-common` | [Likely], **verify** |
 | F9 | Existing Soroban security tools: Scout (CoinFabrik, source-level), Certora Sunbeam (Wasm-level formal verification), Almanax (LLM-based) | [Certain] |
-| F10 | SEP-1 (`stellar.toml`, home-domain metadata), SEP-41 (token interface), SEP-43 (wallet interface; used by Freighter / Wallets Kit) | [Likely], **verify** SEP-43 current API surface |
+| F10 | SEP-1 (`stellar.toml`, home-domain metadata), SEP-41 (token interface), SEP-43 (wallet interface; used by Freighter / Wallets Kit) | [Certain] for SEP-1/41; **SEP-43 API surface checked 2026-10-30** against `stellar/stellar-protocol@62a67297ea14` v1.2.1 (still Draft): its `signAuthEntry` is self-contradictory — entry in the interface, preimage in the prose — and Freighter implements the **preimage** reading, returning a bare signature. See Guard `packages/adapter-reference/src/sep43.ts` |
 | F11 | Go ecosystem has first-party ingestion tooling that can read Galexie output | [Likely], **verify** |
 | F12 | A standalone browser extension cannot reliably hook other wallets' signing flows | [Guessing] |
 
