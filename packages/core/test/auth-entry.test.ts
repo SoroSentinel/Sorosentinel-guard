@@ -465,4 +465,18 @@ describe("signing-payload classification of a wallet's reply", () => {
       expect(isSignatureLength(bad)).toBe(false);
     }
   });
+
+  it("malformed or padded-out padding does not read as a signature", () => {
+    // Canonical base64 pads with at most two '=' and only to a multiple of four.
+    // A wallet could send anything here, and the shape label must not overclaim.
+    // The two guards are independent: six pads on 86 chars lands on a multiple of
+    // four, so only `pads > 2` rejects it, while one pad on 86 chars decodes to a
+    // plausible 64 bytes, so only the modulo check rejects that.
+    for (const bad of ["A".repeat(86) + "=", "A".repeat(86) + "===", "A".repeat(84) + "===", "A".repeat(86) + "=".repeat(6), "A".repeat(86) + "=".repeat(50_002), "A".repeat(87) + "=", "A=".repeat(43), "=".repeat(50_000)]) {
+      expect(isSignatureLength(bad)).toBe(false);
+    }
+    // A '=' anywhere but at the end is not the standard alphabet.
+    expect(isSignatureLength("A".repeat(43) + "=" + "A".repeat(42) + "==")).toBe(false);
+    expect(isSignatureLength(rawBase64(64))).toBe(true);
+  });
 });
