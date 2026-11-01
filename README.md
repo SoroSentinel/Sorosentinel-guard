@@ -1,9 +1,10 @@
-<!-- TODO: add a banner/logo image here once one exists. -->
+![SoroSentinel Guard Banner](media/sorosentinel-guard.jpg)
 
 # SoroSentinel Guard
 
 [![CI](https://github.com/SoroSentinel/Sorosentinel-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/SoroSentinel/Sorosentinel-guard/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/SoroSentinel/Sorosentinel-guard/badge)](https://scorecard.dev/viewer/?uri=github.com/SoroSentinel/Sorosentinel-guard)
+[![Docs](https://img.shields.io/badge/docs-GitHub_Pages-blue.svg)](https://sorosentinel.github.io/Sorosentinel-intel/)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript)
 ![Stellar](https://img.shields.io/badge/Stellar-Soroban-black)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
@@ -20,15 +21,15 @@ No real account, contract or transaction appears in it; the address and amounts 
 
 Music: ["Business Moves Vol. 12"](https://www.ende.app) by Sascha Ende, used under CC BY 4.0.
 
-## Maintainers | [Telegram](TODO-telegram-group-link)
+## Maintainers
 
 | Maintainer | GitHub | Contact |
 |---|---|---|
-| TODO name | [@TODO](https://github.com/TODO) | [Telegram](https://t.me/TODO) |
+| Allison | [@Teescom](https://github.com/Teescom) | [GitHub](https://github.com/Teescom) |
 
 ## Community
 
-Questions and coordination: [Telegram group](TODO-telegram-group-link).
+Questions and coordination: [GitHub Discussions](https://github.com/SoroSentinel/Sorosentinel-guard/discussions) and [Issues](https://github.com/SoroSentinel/Sorosentinel-guard/issues). Live documentation: [Documentation site](https://sorosentinel.github.io/Sorosentinel-intel/).
 
 ## How the pieces fit
 
