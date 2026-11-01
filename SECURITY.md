@@ -10,7 +10,7 @@ Please do not open a public issue, PR or discussion for a vulnerability.
 
 Report it privately through GitHub's private vulnerability reporting:
 <https://github.com/SoroSentinel/Sorosentinel-guard/security/advisories/new>
-(the **Security** tab → **Report a vulnerability**). If you cannot use GitHub, email TODO-security-contact.
+(the **Security** tab → **Report a vulnerability**). If you cannot use GitHub, email adebisiallison2018@gmail.com.
 
 Include:
 
