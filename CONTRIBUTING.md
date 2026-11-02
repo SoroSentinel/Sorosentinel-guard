@@ -53,4 +53,4 @@ Your PR description must cover (the template asks for these):
 
 ## Questions
 
-Ask on the issue, or in the [Telegram group](TODO-telegram-group-link).
+Ask on the issue you are working on.
