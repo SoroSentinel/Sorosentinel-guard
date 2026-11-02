@@ -29,7 +29,7 @@ Music: ["Business Moves Vol. 12"](https://www.ende.app) by Sascha Ende, used und
 
 ## Community
 
-Questions and coordination: [GitHub Discussions](https://github.com/SoroSentinel/Sorosentinel-guard/discussions) and [Issues](https://github.com/SoroSentinel/Sorosentinel-guard/issues). Live documentation: [Documentation site](https://sorosentinel.github.io/Sorosentinel-intel/).
+Questions and coordination: [Issues](https://github.com/SoroSentinel/Sorosentinel-guard/issues). Live documentation: [Documentation site](https://sorosentinel.github.io/Sorosentinel-intel/).
 
 ## How the pieces fit
 
