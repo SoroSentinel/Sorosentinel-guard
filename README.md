@@ -254,7 +254,7 @@ You do not have to build the display yourself. `renderFindings(result, { doc, st
 
 ## Contributing
 
-Pick an open issue (Wave issues carry the `Stellar Wave` label), comment to be assigned, then follow [CONTRIBUTING.md](CONTRIBUTING.md). Every PR must pass `make verify`. AI coding agents must follow [AGENTS.md](AGENTS.md).
+Pick an open issue (every issue is labeled by difficulty, type and area; new contributors can start with `good first issue`), comment to be assigned, then follow [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). Every PR must pass `make verify`. AI coding agents must follow [AGENTS.md](AGENTS.md).
 
 ## Security
 
