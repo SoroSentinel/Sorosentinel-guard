@@ -56,6 +56,8 @@ export interface AnalyzeContext {
     pinnedKeys: Readonly<Record<string, Uint8Array>>;
     maxAgeSeconds?: number;
     minVersion?: number;
+    declaredLength?: number;
+    maxBytes?: number;
   };
   /**
    * RPC endpoint chosen by the integrator (Guard has no default). Used only
@@ -339,6 +341,8 @@ function snapshotCounterparties(entities: Entities, ctx: AnalyzeContext, network
     asOf: ctx.asOf,
     ...(ctx.snapshot.maxAgeSeconds === undefined ? {} : { maxAgeSeconds: ctx.snapshot.maxAgeSeconds }),
     ...(ctx.snapshot.minVersion === undefined ? {} : { minVersion: ctx.snapshot.minVersion }),
+    ...(ctx.snapshot.declaredLength === undefined ? {} : { declaredLength: ctx.snapshot.declaredLength }),
+    ...(ctx.snapshot.maxBytes === undefined ? {} : { maxBytes: ctx.snapshot.maxBytes }),
   });
   if (!check.ok) return { status: check.reason, hits: [], checked: false };
   const { hits, unresolved } = lookup(entities, network, check.entries);

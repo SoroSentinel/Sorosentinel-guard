@@ -46,7 +46,14 @@ export {
 export type { RpcConfig, SimulationOutcome } from "./simulate/simulate.ts";
 export { KeyError, canonicalKey, normalizeKey, snapshotHash } from "./canonical/key.ts";
 export type { EntityType, KeyErrorCode } from "./canonical/key.ts";
-export { DEFAULT_MAX_AGE_SECONDS, checkSnapshot, parseSnapshot, snapshotPayload } from "./intel/snapshot.ts";
+export {
+  DEFAULT_MAX_AGE_SECONDS,
+  MAX_ENTRIES,
+  MAX_SNAPSHOT_BYTES,
+  checkSnapshot,
+  parseSnapshot,
+  snapshotPayload,
+} from "./intel/snapshot.ts";
 export type { Snapshot, SnapshotCheck, SnapshotOptions, SnapshotRejection } from "./intel/snapshot.ts";
 export { MAX_INTEL_BATCH, MAX_INTEL_RESPONSE_BYTES, lookupEntitySignals } from "./intel/api.ts";
 export type { IntelApiConfig, IntelFailure, IntelLookup, IntelSignalLevel } from "./intel/api.ts";

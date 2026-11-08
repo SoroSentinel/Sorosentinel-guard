@@ -92,4 +92,24 @@ describe("snapshot rejection", () => {
       reason: "unknown_key",
     });
   });
+
+  it("enforces byte limits and declaredLength ceiling", () => {
+    expect(checkSnapshot(vector.snapshot, { ...opts(), declaredLength: 45 * 1024 * 1024 })).toEqual({
+      ok: false,
+      reason: "malformed",
+    });
+
+    const rawStr = JSON.stringify(vector.snapshot);
+    expect(checkSnapshot(rawStr, { ...opts(), maxBytes: 10 })).toEqual({ ok: false, reason: "malformed" });
+    expect(checkSnapshot(rawStr, opts()).ok).toBe(true);
+
+    const rawBytes = new TextEncoder().encode(rawStr);
+    expect(checkSnapshot(rawBytes, { ...opts(), maxBytes: 10 })).toEqual({ ok: false, reason: "malformed" });
+    expect(checkSnapshot(rawBytes, opts()).ok).toBe(true);
+  });
+
+  it("rejects entries array exceeding MAX_ENTRIES ceiling", () => {
+    const oversized = { ...vector.snapshot, entries: new Array(1_000_001) };
+    expect(checkSnapshot(oversized, opts())).toEqual({ ok: false, reason: "malformed" });
+  });
 });

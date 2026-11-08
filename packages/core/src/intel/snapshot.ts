@@ -6,7 +6,9 @@ import { verify } from "@stellar/stellar-sdk/base";
  * Any failure means the snapshot is not used; it is never partially trusted.
  */
 
-export const MAX_ENTRIES = 10_000_000;
+export const MAX_ENTRIES = 1_000_000;
+/** Maximum allowed serialized snapshot size in bytes (40 MiB). */
+export const MAX_SNAPSHOT_BYTES = 40 * 1024 * 1024;
 /** Snapshots are published every few minutes; older than 15 minutes is "protection data stale". */
 export const DEFAULT_MAX_AGE_SECONDS = 15 * 60;
 /** Tolerated clock skew for a snapshot dated after `asOf`. */
@@ -53,10 +55,35 @@ export interface SnapshotOptions {
   maxAgeSeconds?: number;
   /** Minimum version to accept, persisted from the last good snapshot to prevent rollback. */
   minVersion?: number;
+  /** Declared or measured size of the snapshot in bytes, rejected if over maxBytes. */
+  declaredLength?: number;
+  /** Maximum allowed size in bytes (defaults to MAX_SNAPSHOT_BYTES). */
+  maxBytes?: number;
 }
 
 /** Strict structural parse: exact field set, every pattern, sorted unique entries. */
-export function parseSnapshot(raw: unknown): Snapshot | null {
+export function parseSnapshot(raw: unknown, opts?: { maxBytes?: number; declaredLength?: number }): Snapshot | null {
+  const maxBytes = opts?.maxBytes ?? MAX_SNAPSHOT_BYTES;
+  if (opts?.declaredLength !== undefined && opts.declaredLength > maxBytes) {
+    return null;
+  }
+  if (raw instanceof Uint8Array) {
+    if (raw.byteLength > maxBytes) return null;
+    try {
+      raw = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(raw));
+    } catch {
+      return null;
+    }
+  } else if (typeof raw === "string") {
+    if (raw.length > maxBytes) return null;
+    const byteLength = new TextEncoder().encode(raw).byteLength;
+    if (byteLength > maxBytes) return null;
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
   const o = raw as Record<string, unknown>;
   const keys = Object.keys(o);
@@ -103,7 +130,7 @@ export function snapshotPayload(s: Snapshot): Uint8Array {
 
 /** Parses, checks network and age, and verifies the Ed25519 signature against a pinned key. */
 export function checkSnapshot(raw: unknown, opts: SnapshotOptions): SnapshotCheck {
-  const s = parseSnapshot(raw);
+  const s = parseSnapshot(raw, opts);
   if (s === null) return { ok: false, reason: "malformed" };
   const key = opts.pinnedKeys[s.key_id];
   if (key === undefined || key.length !== 32) return { ok: false, reason: "unknown_key" };
