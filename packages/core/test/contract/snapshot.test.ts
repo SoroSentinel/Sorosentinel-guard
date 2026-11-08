@@ -112,4 +112,24 @@ describe("snapshot rejection", () => {
     const oversized = { ...vector.snapshot, entries: new Array(1_000_001) };
     expect(checkSnapshot(oversized, opts())).toEqual({ ok: false, reason: "malformed" });
   });
+
+  it("rejects snapshots signed by a revoked key", () => {
+    expect(
+      checkSnapshot(vector.snapshot, { ...opts(), revokedKeyIds: new Set(["test-key-1"]) }),
+    ).toEqual({
+      ok: false,
+      reason: "revoked_key",
+    });
+
+    expect(
+      checkSnapshot(vector.snapshot, { ...opts(), revokedKeyIds: ["test-key-1"] }),
+    ).toEqual({
+      ok: false,
+      reason: "revoked_key",
+    });
+
+    expect(
+      checkSnapshot(vector.snapshot, { ...opts(), revokedKeyIds: new Set(["other-key"]) }).ok,
+    ).toBe(true);
+  });
 });

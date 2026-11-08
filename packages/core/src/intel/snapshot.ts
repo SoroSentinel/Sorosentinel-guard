@@ -35,6 +35,7 @@ export interface Snapshot {
 export type SnapshotRejection =
   | "malformed"
   | "unknown_key"
+  | "revoked_key"
   | "bad_signature"
   | "network_mismatch"
   | "stale"
@@ -59,6 +60,8 @@ export interface SnapshotOptions {
   declaredLength?: number;
   /** Maximum allowed size in bytes (defaults to MAX_SNAPSHOT_BYTES). */
   maxBytes?: number;
+  /** Set or list of revoked key IDs that Guard must refuse to trust even if pinned. */
+  revokedKeyIds?: ReadonlySet<string> | readonly string[];
 }
 
 /** Strict structural parse: exact field set, every pattern, sorted unique entries. */
@@ -132,6 +135,9 @@ export function snapshotPayload(s: Snapshot): Uint8Array {
 export function checkSnapshot(raw: unknown, opts: SnapshotOptions): SnapshotCheck {
   const s = parseSnapshot(raw, opts);
   if (s === null) return { ok: false, reason: "malformed" };
+  if (isRevoked(s.key_id, opts.revokedKeyIds)) {
+    return { ok: false, reason: "revoked_key" };
+  }
   const key = opts.pinnedKeys[s.key_id];
   if (key === undefined || key.length !== 32) return { ok: false, reason: "unknown_key" };
   const sig = decodeBase64(s.signature);
@@ -163,4 +169,11 @@ function decodeBase64(s: string): Uint8Array | null {
   } catch {
     return null;
   }
+}
+
+function isRevoked(keyId: string, revoked?: ReadonlySet<string> | readonly string[]): boolean {
+  if (revoked === undefined) return false;
+  if (revoked instanceof Set) return revoked.has(keyId);
+  if (Array.isArray(revoked)) return revoked.includes(keyId);
+  return false;
 }
