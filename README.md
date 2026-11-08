@@ -21,12 +21,6 @@ No real account, contract or transaction appears in it; the address and amounts 
 
 Music: ["Business Moves Vol. 12"](https://www.ende.app) by Sascha Ende, used under CC BY 4.0.
 
-## Maintainers
-
-| Maintainer | GitHub | Contact |
-|---|---|---|
-| Allison | [@Teescom](https://github.com/Teescom) | [GitHub](https://github.com/Teescom) |
-
 ## Community
 
 Questions and coordination: [Issues](https://github.com/SoroSentinel/Sorosentinel-guard/issues). Live documentation: [Documentation site](https://sorosentinel.github.io/Sorosentinel-intel/).
@@ -168,8 +162,9 @@ const ctx: AnalyzeContext = {
 | `networkPassphrase` | Which network you will sign **for**. Guard reads the passphrase off the envelope itself; this is the expected value. Anything it does not know (standalone, a fork) becomes `network: "unknown"` + `G-NETWORK-UNKNOWN` and never a clean result. |
 | `asOf` | Caller-supplied reference time. Required for a snapshot to be consulted at all: without it `snapshotStatus` is `no_as_of` and counterparties go unchecked. |
 | `snapshot.pinnedKeys` | Map of key id → 32 raw public key bytes, pinned in **your** build. A snapshot whose `key_id` is not in the map is not used. Guard verifies the Ed25519 signature itself; it never trusts an unsigned snapshot. |
-| `snapshot.maxAgeSeconds` | Optional; defaults to 3600. Past it, `snapshotStatus: "stale"` — surface that as "protection data stale", not as silence. |
-| `rpc.url` | The endpoint `analyzeAsync` contacts for simulation and SEP-29 lookups. HTTPS enforced. Nothing else receives data. |
+| `snapshot.maxAgeSeconds` | Optional; defaults to 900 (15 minutes). Past it, `snapshotStatus: "stale"` — surface that as "protection data stale", not as silence. |
+| `snapshot.minVersion` | Optional; persisted from the last good snapshot to prevent rollback. A snapshot whose version is lower is rejected as `rollback`. |
+| `rpc.url` | The endpoint `analyzeAsync` contacts for simulation and SEP-29 lookups. HTTPS enforced (plain HTTP permitted for loopback only). Nothing else receives data. |
 | `intel.url` | Optional. Intel's read API, used by `analyzeAsync` **only** when no snapshot settled the counterparties — a fresh snapshot that named every entity is the answer, and nothing is sent. HTTPS is enforced here too, and more strictly: a snapshot carries a signature, an API reply does not, so transport integrity is the only thing that says the answer came from Intel. Guard sends one `POST /v1/entities:batchGet` with the network, type and key of each counterparty (100 at most) and nothing else. Any timeout, HTTP error or unexpected reply leaves `NC-COUNTERPARTY-SIGNALS`: the fallback can only add findings, never remove the gap. |
 | `intel.timeoutMs` | Same transport rules as `rpc`: default 10 s, refused above 60 s rather than truncated. |
 

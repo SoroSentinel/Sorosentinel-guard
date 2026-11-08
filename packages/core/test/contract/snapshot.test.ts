@@ -16,7 +16,7 @@ const bytes = (hex: string) => Uint8Array.from(hex.match(/../g) ?? [], (b) => Nu
 const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 const pinned = { "test-key-1": bytes(vector.public_key_hex) };
 const generated = Date.parse(vector.snapshot.generated_at);
-const opts = (over: Partial<{ asOf: Date; network: "public" | "testnet"; maxAgeSeconds: number }> = {}) => ({
+const opts = (over: Partial<{ asOf: Date; network: "public" | "testnet"; maxAgeSeconds: number; minVersion: number }> = {}) => ({
   pinnedKeys: pinned,
   network: "public" as const,
   asOf: new Date(generated + 60_000),
@@ -75,10 +75,15 @@ describe("snapshot rejection", () => {
   });
 
   it("rejects stale and future-dated snapshots", () => {
-    expect(checkSnapshot(vector.snapshot, opts({ asOf: new Date(generated + 3601_000) }))).toEqual({ ok: false, reason: "stale" });
-    expect(checkSnapshot(vector.snapshot, opts({ asOf: new Date(generated + 3600_000) })).ok).toBe(true);
+    expect(checkSnapshot(vector.snapshot, opts({ asOf: new Date(generated + 901_000) }))).toEqual({ ok: false, reason: "stale" });
+    expect(checkSnapshot(vector.snapshot, opts({ asOf: new Date(generated + 900_000) })).ok).toBe(true);
     expect(checkSnapshot(vector.snapshot, opts({ asOf: new Date(generated - 301_000) }))).toEqual({ ok: false, reason: "from_future" });
     expect(checkSnapshot(vector.snapshot, opts({ asOf: new Date(Number.NaN) }))).toEqual({ ok: false, reason: "stale" });
+  });
+
+  it("rejects rolled-back snapshot versions below minVersion", () => {
+    expect(checkSnapshot(vector.snapshot, opts({ minVersion: 2 }))).toEqual({ ok: false, reason: "rollback" });
+    expect(checkSnapshot(vector.snapshot, opts({ minVersion: 1 })).ok).toBe(true);
   });
 
   it("rejects a wrong-length pinned key", () => {

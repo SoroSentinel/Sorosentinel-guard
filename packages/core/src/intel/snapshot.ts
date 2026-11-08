@@ -7,8 +7,8 @@ import { verify } from "@stellar/stellar-sdk/base";
  */
 
 export const MAX_ENTRIES = 10_000_000;
-/** Snapshots are published every few minutes; older than this is "protection data stale". TODO: confirm the product value. */
-export const DEFAULT_MAX_AGE_SECONDS = 60 * 60;
+/** Snapshots are published every few minutes; older than 15 minutes is "protection data stale". */
+export const DEFAULT_MAX_AGE_SECONDS = 15 * 60;
 /** Tolerated clock skew for a snapshot dated after `asOf`. */
 export const MAX_FUTURE_SKEW_SECONDS = 5 * 60;
 
@@ -36,7 +36,8 @@ export type SnapshotRejection =
   | "bad_signature"
   | "network_mismatch"
   | "stale"
-  | "from_future";
+  | "from_future"
+  | "rollback";
 
 export type SnapshotCheck =
   | { ok: true; snapshot: Snapshot; entries: ReadonlySet<string> }
@@ -50,6 +51,8 @@ export interface SnapshotOptions {
   /** Reference time supplied by the caller (Guard never reads the clock). */
   asOf: Date;
   maxAgeSeconds?: number;
+  /** Minimum version to accept, persisted from the last good snapshot to prevent rollback. */
+  minVersion?: number;
 }
 
 /** Strict structural parse: exact field set, every pattern, sorted unique entries. */
@@ -113,6 +116,9 @@ export function checkSnapshot(raw: unknown, opts: SnapshotOptions): SnapshotChec
     valid = false;
   }
   if (!valid) return { ok: false, reason: "bad_signature" };
+  if (opts.minVersion !== undefined && s.version < opts.minVersion) {
+    return { ok: false, reason: "rollback" };
+  }
   if (s.network !== opts.network) return { ok: false, reason: "network_mismatch" };
 
   const asOfMs = opts.asOf.getTime();

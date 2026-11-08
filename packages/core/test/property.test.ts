@@ -192,7 +192,7 @@ describe("checkSnapshot", () => {
       fc.property(fc.date({ noInvalidDate: false }), (asOf) => {
         const r = checkSnapshot(vector.snapshot, opts(asOf));
         const age = (asOf.getTime() - generated) / 1000;
-        expect(r.ok).toBe(Number.isFinite(age) && age >= -5 * 60 && age <= 60 * 60);
+        expect(r.ok).toBe(Number.isFinite(age) && age >= -5 * 60 && age <= 15 * 60);
       }),
     );
   });
