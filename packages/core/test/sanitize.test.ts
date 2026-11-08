@@ -16,6 +16,12 @@ describe("sanitizeUntrusted", () => {
     ["LRM / RLM / Arabic letter mark", "a‎b‏c؜d", "abcd"],
     ["zero-width characters", "pay​pal‌‍⁠﻿", "paypal"],
     ["newlines and tabs (fake extra lines)", "Memo\nSend to: GABC\t!", "MemoSend to: GABC!"],
+    ["line and paragraph separators (U+2028, U+2029)", "line\u2028separator\u2029para", "lineseparatorpara"],
+    ["soft hyphen (U+00AD)", "pay\u00ADpal", "paypal"],
+    ["Mongolian vowel separator (U+180E)", "mongol\u180Eian", "mongolian"],
+    ["invisible math operators (U+2061-U+2064)", "a\u2061b\u2062c\u2063d\u2064e", "abcde"],
+    ["deprecated format characters (U+206A-U+206F)", "x\u206Ay\u206Bz\u206Fw", "xyzw"],
+    ["Unicode tag characters (U+E0000-E007F)", "USDC\u{E0001}\u{E0020}\u{E007F}COIN", "USDCCOIN"],
     ["C1 controls and DEL", "a\u0085b\u009Bc\u007Fd", "abcd"],
     ["NUL", "a\u0000b", "ab"],
   ])("removes %s", (_n, input, want) => {

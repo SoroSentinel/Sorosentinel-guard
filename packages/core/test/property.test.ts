@@ -199,7 +199,7 @@ describe("checkSnapshot", () => {
 });
 
 describe("sanitizeUntrusted", () => {
-  const UNSAFE = /[\u0000-\u001f\u007f-\u009f؜​-‏‪-‮⁠⁦-⁩﻿]/u;
+  const UNSAFE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
   const input = fc.oneof(fc.string({ unit: "binary", maxLength: 600 }), fc.uint8Array({ maxLength: 1200 }));
 
   it("output has no unsafe characters and is capped", () => {
