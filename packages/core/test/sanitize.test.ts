@@ -22,6 +22,7 @@ describe("sanitizeUntrusted", () => {
     ["invisible math operators (U+2061-U+2064)", "a\u2061b\u2062c\u2063d\u2064e", "abcde"],
     ["deprecated format characters (U+206A-U+206F)", "x\u206Ay\u206Bz\u206Fw", "xyzw"],
     ["Unicode tag characters (U+E0000-E007F)", "USDC\u{E0001}\u{E0020}\u{E007F}COIN", "USDCCOIN"],
+    ["Hangul fillers (U+115F, U+1160, U+3164, U+FFA0)", "pay\u115Fpal\u1160X\u3164Y\uFFA0Z", "paypalXYZ"],
     ["C1 controls and DEL", "a\u0085b\u009Bc\u007Fd", "abcd"],
     ["NUL", "a\u0000b", "ab"],
   ])("removes %s", (_n, input, want) => {

@@ -40,7 +40,8 @@ export type SnapshotRejection =
   | "network_mismatch"
   | "stale"
   | "from_future"
-  | "rollback";
+  | "rollback"
+  | "invalid_options";
 
 export type SnapshotCheck =
   | { ok: true; snapshot: Snapshot; entries: ReadonlySet<string> }
@@ -133,6 +134,7 @@ export function snapshotPayload(s: Snapshot): Uint8Array {
 
 /** Parses, checks network and age, and verifies the Ed25519 signature against a pinned key. */
 export function checkSnapshot(raw: unknown, opts: SnapshotOptions): SnapshotCheck {
+  if (!validOptions(opts)) return { ok: false, reason: "invalid_options" };
   const s = parseSnapshot(raw, opts);
   if (s === null) return { ok: false, reason: "malformed" };
   if (isRevoked(s.key_id, opts.revokedKeyIds)) {
@@ -149,10 +151,13 @@ export function checkSnapshot(raw: unknown, opts: SnapshotOptions): SnapshotChec
     valid = false;
   }
   if (!valid) return { ok: false, reason: "bad_signature" };
-  if (opts.minVersion !== undefined && s.version < opts.minVersion) {
-    return { ok: false, reason: "rollback" };
-  }
   if (s.network !== opts.network) return { ok: false, reason: "network_mismatch" };
+  // A minVersion read back from storage that is not a positive integer would
+  // otherwise compare false and silently switch rollback protection off.
+  if (opts.minVersion !== undefined) {
+    if (!Number.isSafeInteger(opts.minVersion) || opts.minVersion < 1) return { ok: false, reason: "invalid_options" };
+    if (s.version < opts.minVersion) return { ok: false, reason: "rollback" };
+  }
 
   const asOfMs = opts.asOf.getTime();
   if (!Number.isFinite(asOfMs)) return { ok: false, reason: "stale" };
@@ -176,4 +181,10 @@ function isRevoked(keyId: string, revoked?: ReadonlySet<string> | readonly strin
   if (revoked instanceof Set) return revoked.has(keyId);
   if (Array.isArray(revoked)) return revoked.includes(keyId);
   return false;
+}
+
+/** Numeric options must be finite and positive; anything else is a caller bug, not a usable bound. */
+function validOptions(opts: SnapshotOptions): boolean {
+  const positive = (n: number | undefined) => n === undefined || (Number.isFinite(n) && n > 0);
+  return positive(opts.maxAgeSeconds) && positive(opts.maxBytes) && (opts.declaredLength === undefined || (Number.isSafeInteger(opts.declaredLength) && opts.declaredLength >= 0));
 }

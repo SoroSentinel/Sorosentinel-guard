@@ -14,9 +14,15 @@ const ELLIPSIS = "…";
 
 /**
  * Matches Unicode control (Cc), format (Cf, including bidi controls, invisible tags,
- * soft hyphens, zero-width characters), line separator (Zl), and paragraph separator (Zp).
+ * soft hyphens, zero-width characters), line separator (Zl), and paragraph separator (Zp),
+ * plus the Hangul fillers (U+115F, U+1160, U+3164, U+FFA0): letters by category, but
+ * rendered blank and used as invisible padding.
+ *
+ * Exported without the `g` flag so callers can use `.test()` safely; a global
+ * regex keeps `lastIndex` between calls.
  */
-export const UNICODE_UNSAFE_REGEX = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
+export const UNICODE_UNSAFE_REGEX = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\u115F\u1160\u3164\uFFA0]/u;
+const UNSAFE_GLOBAL = new RegExp(UNICODE_UNSAFE_REGEX.source, "gu");
 
 /**
  * Returns display-safe plain text. Bytes are decoded as UTF-8 with invalid
@@ -25,7 +31,7 @@ export const UNICODE_UNSAFE_REGEX = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
  */
 export function sanitizeUntrusted(input: string | Uint8Array): string {
   const text = typeof input === "string" ? input : new TextDecoder("utf-8", { fatal: false }).decode(input);
-  const stripped = text.replace(UNICODE_UNSAFE_REGEX, "");
+  const stripped = text.replace(UNSAFE_GLOBAL, "");
   const codePoints = Array.from(stripped);
   return codePoints.length > MAX_DISPLAY_LENGTH
     ? codePoints.slice(0, MAX_DISPLAY_LENGTH - 1).join("") + ELLIPSIS

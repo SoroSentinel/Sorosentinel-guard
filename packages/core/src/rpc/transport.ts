@@ -168,6 +168,8 @@ export function isLedger(value: unknown): value is number {
 function validEndpoint(url: string): boolean {
   try {
     const u = new URL(url);
+    // Credentials in the URL would be sent on every request and can end up in logs.
+    if (u.username !== "" || u.password !== "") return false;
     if (u.protocol === "https:") {
       return u.hostname.length > 0;
     }

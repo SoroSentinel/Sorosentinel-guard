@@ -95,6 +95,8 @@ export interface AnalysisResult {
   findings: Finding[];
   notChecked: NotChecked[];
   snapshotStatus: SnapshotStatus;
+  /** Version of the verified snapshot; present only when `snapshotStatus` is `verified`. Persist it as `snapshot.minVersion`. */
+  snapshotVersion?: number;
   /** Present when status is `unanalyzable`. */
   unanalyzableReason?: UnanalyzableReason;
   /** Present only on `analyzeAsync` results. */
@@ -162,6 +164,8 @@ export interface AuthEntryAnalysisResult {
   findings: Finding[];
   notChecked: NotChecked[];
   snapshotStatus: SnapshotStatus;
+  /** Version of the verified snapshot; present only when `snapshotStatus` is `verified`. Persist it as `snapshot.minVersion`. */
+  snapshotVersion?: number;
   /** Present when status is `unanalyzable`. */
   unanalyzableReason?: UnanalyzableReason;
 }
@@ -221,6 +225,7 @@ export function analyzeAuthEntry(authEntryBase64: string, ctx: AnalyzeContext): 
     findings: orderFindings([...networkUnknownFinding(entry.network), ...flaggedFindings(cp.hits)]),
     notChecked: [...notChecked].sort(),
     snapshotStatus: cp.status,
+    ...(cp.version === undefined ? {} : { snapshotVersion: cp.version }),
   };
 }
 
@@ -317,12 +322,15 @@ function evaluate(
     findings,
     notChecked: [...notChecked].sort(),
     snapshotStatus: cp.status,
+    ...(cp.version === undefined ? {} : { snapshotVersion: cp.version }),
   };
 }
 
 /** What the counterparty checks found, and whether they could be run at all. */
 interface Counterparties {
   status: SnapshotStatus;
+  /** Version of the snapshot that verified; persist it as the next `snapshot.minVersion`. */
+  version?: number;
   hits: CounterpartyHit[];
   checked: boolean;
 }
@@ -348,7 +356,7 @@ function snapshotCounterparties(entities: Entities, ctx: AnalyzeContext, network
   });
   if (!check.ok) return { status: check.reason, hits: [], checked: false };
   const { hits, unresolved } = lookup(entities, network, check.entries);
-  return { status: "verified", hits, checked: !entities.contractsUnchecked && unresolved === 0 };
+  return { status: "verified", version: check.snapshot.version, hits, checked: !entities.contractsUnchecked && unresolved === 0 };
 }
 
 /**

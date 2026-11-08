@@ -250,6 +250,7 @@ describe("simulateTransaction config", () => {
   it.each([
     ["non-http URL", { url: "file:///etc/passwd", fetch: ok() }],
     ["plain-http remote URL", { url: "http://rpc.example", fetch: ok() }],
+    ["credentials in the URL", { url: "https://user:secret@rpc.example", fetch: ok() }],
     ["unparseable URL", { url: "not a url", fetch: ok() }],
     ["zero timeout", { url: URL_, timeoutMs: 0, fetch: ok() }],
     ["NaN timeout", { url: URL_, timeoutMs: Number.NaN, fetch: ok() }],

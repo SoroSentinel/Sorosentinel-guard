@@ -86,6 +86,20 @@ describe("snapshot rejection", () => {
     expect(checkSnapshot(vector.snapshot, opts({ minVersion: 1 })).ok).toBe(true);
   });
 
+  it("checks the network before the version floor", () => {
+    expect(checkSnapshot(vector.snapshot, opts({ network: "testnet", minVersion: 99 }))).toEqual({ ok: false, reason: "network_mismatch" });
+  });
+
+  it.each([
+    ["NaN minVersion", { minVersion: Number.NaN }],
+    ["fractional minVersion", { minVersion: 1.5 }],
+    ["zero minVersion", { minVersion: 0 }],
+    ["negative maxAgeSeconds", { maxAgeSeconds: -1 }],
+    ["NaN maxAgeSeconds", { maxAgeSeconds: Number.NaN }],
+  ])("refuses %s instead of silently disabling the check", (_n, over) => {
+    expect(checkSnapshot(vector.snapshot, opts(over))).toEqual({ ok: false, reason: "invalid_options" });
+  });
+
   it("rejects a wrong-length pinned key", () => {
     expect(checkSnapshot(vector.snapshot, { ...opts(), pinnedKeys: { "test-key-1": new Uint8Array(31) } })).toEqual({
       ok: false,

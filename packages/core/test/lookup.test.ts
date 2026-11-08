@@ -54,6 +54,7 @@ describe("counterparty lookup", () => {
   it("a verified snapshot with no hits gives the first clean result", () => {
     const r = run("benign/memo_id.json", withSnapshot(snapshot("public", [])));
     expect(r.snapshotStatus).toBe("verified");
+    expect(r.snapshotVersion).toBe(1);
     expect(r.notChecked).toEqual(["NC-EXECUTION-TIME"]);
     expect(r.status).toBe("no_issues_found");
     expect(r.findings).toEqual([]);
