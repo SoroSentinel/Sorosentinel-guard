@@ -13,7 +13,7 @@
     "@sorosentinel/guard-core": "workspace:*"
   },
   "devDependencies": {
-    "@stellar/stellar-sdk": "17.2.1",
+    "@stellar/stellar-sdk": "17.4.0",
     "typescript": "7.0.2",
     "vitest": "5.0.4"
   }

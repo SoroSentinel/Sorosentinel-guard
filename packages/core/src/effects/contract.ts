@@ -201,6 +201,8 @@ function address(v: xdr.ScVal): string {
       return StrKey.encodeContract(a.contractId.toBytes());
     case "scAddressTypeMuxedAccount":
       return StrKey.encodeEd25519PublicKey(a.muxedAccount.ed25519.toBytes());
+    case "scAddressTypeMuxedContract":
+      return StrKey.encodeContract(a.muxedContract.contractId.toBytes());
     case "scAddressTypeClaimableBalance":
     case "scAddressTypeLiquidityPool":
       // Not token holders a contract invocation can pay (CAP-67 uses them for classic events only).

@@ -176,6 +176,7 @@ function ed25519OfAddress(address: xdr.ScAddress): Uint8Array | null {
     case "scAddressTypeContract":
     case "scAddressTypeClaimableBalance":
     case "scAddressTypeLiquidityPool":
+    case "scAddressTypeMuxedContract":
       return null;
     default:
       return assertNever(address);

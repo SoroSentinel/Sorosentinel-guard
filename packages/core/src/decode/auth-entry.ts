@@ -180,6 +180,8 @@ function readAddress(a: xdr.ScAddress): AuthEntryAddress {
       return { kind: "account", account: StrKey.encodeEd25519PublicKey(a.accountId.ed25519.toBytes()), muxedId: null };
     case "scAddressTypeContract":
       return { kind: "contract", contract: StrKey.encodeContract(a.contractId.toBytes()) };
+    case "scAddressTypeMuxedContract":
+      return { kind: "contract", contract: StrKey.encodeContract(a.muxedContract.contractId.toBytes()) };
     case "scAddressTypeMuxedAccount":
       return { kind: "account", account: StrKey.encodeEd25519PublicKey(a.muxedAccount.ed25519.toBytes()), muxedId: a.muxedAccount.id.toString() };
     case "scAddressTypeClaimableBalance":
