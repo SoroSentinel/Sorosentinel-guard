@@ -249,11 +249,21 @@ describe("simulateTransaction config", () => {
 
   it.each([
     ["non-http URL", { url: "file:///etc/passwd", fetch: ok() }],
+    ["plain-http remote URL", { url: "http://rpc.example", fetch: ok() }],
     ["unparseable URL", { url: "not a url", fetch: ok() }],
     ["zero timeout", { url: URL_, timeoutMs: 0, fetch: ok() }],
     ["NaN timeout", { url: URL_, timeoutMs: Number.NaN, fetch: ok() }],
     ["timeout above the maximum", { url: URL_, timeoutMs: 10 * 60_000, fetch: ok() }],
   ])("%s is invalid_config", async (_name, rpc) => {
     expect(await simulateTransaction(invoke.xdr, rpc)).toEqual({ status: "error", reason: "invalid_config" });
+  });
+
+  it.each([
+    ["http://localhost:8000"],
+    ["http://127.0.0.1:8000"],
+    ["http://[::1]:8000"],
+  ])("permits loopback plain-http: %s", async (url) => {
+    const r = await simulateTransaction(invoke.xdr, { url, fetch: ok() });
+    expect(r.status).toBe("ok");
   });
 });

@@ -168,7 +168,14 @@ export function isLedger(value: unknown): value is number {
 function validEndpoint(url: string): boolean {
   try {
     const u = new URL(url);
-    return u.protocol === "https:" || u.protocol === "http:";
+    if (u.protocol === "https:") {
+      return u.hostname.length > 0;
+    }
+    if (u.protocol === "http:") {
+      const h = u.hostname;
+      return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+    }
+    return false;
   } catch {
     return false;
   }
