@@ -161,7 +161,7 @@ const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2
 function isHttpsEndpoint(url: string): boolean {
   try {
     const u = new URL(url);
-    return u.protocol === "https:" && u.hostname.length > 0;
+    return u.protocol === "https:" && u.hostname.length > 0 && u.username === "" && u.password === "";
   } catch {
     return false;
   }

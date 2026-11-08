@@ -16,7 +16,7 @@ const bytes = (hex: string) => Uint8Array.from(hex.match(/../g) ?? [], (b) => Nu
 const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 const pinned = { "test-key-1": bytes(vector.public_key_hex) };
 const generated = Date.parse(vector.snapshot.generated_at);
-const opts = (over: Partial<{ asOf: Date; network: "public" | "testnet"; maxAgeSeconds: number }> = {}) => ({
+const opts = (over: Partial<{ asOf: Date; network: "public" | "testnet"; maxAgeSeconds: number; minVersion: number }> = {}) => ({
   pinnedKeys: pinned,
   network: "public" as const,
   asOf: new Date(generated + 60_000),
@@ -75,10 +75,29 @@ describe("snapshot rejection", () => {
   });
 
   it("rejects stale and future-dated snapshots", () => {
-    expect(checkSnapshot(vector.snapshot, opts({ asOf: new Date(generated + 3601_000) }))).toEqual({ ok: false, reason: "stale" });
-    expect(checkSnapshot(vector.snapshot, opts({ asOf: new Date(generated + 3600_000) })).ok).toBe(true);
+    expect(checkSnapshot(vector.snapshot, opts({ asOf: new Date(generated + 901_000) }))).toEqual({ ok: false, reason: "stale" });
+    expect(checkSnapshot(vector.snapshot, opts({ asOf: new Date(generated + 900_000) })).ok).toBe(true);
     expect(checkSnapshot(vector.snapshot, opts({ asOf: new Date(generated - 301_000) }))).toEqual({ ok: false, reason: "from_future" });
     expect(checkSnapshot(vector.snapshot, opts({ asOf: new Date(Number.NaN) }))).toEqual({ ok: false, reason: "stale" });
+  });
+
+  it("rejects rolled-back snapshot versions below minVersion", () => {
+    expect(checkSnapshot(vector.snapshot, opts({ minVersion: 2 }))).toEqual({ ok: false, reason: "rollback" });
+    expect(checkSnapshot(vector.snapshot, opts({ minVersion: 1 })).ok).toBe(true);
+  });
+
+  it("checks the network before the version floor", () => {
+    expect(checkSnapshot(vector.snapshot, opts({ network: "testnet", minVersion: 99 }))).toEqual({ ok: false, reason: "network_mismatch" });
+  });
+
+  it.each([
+    ["NaN minVersion", { minVersion: Number.NaN }],
+    ["fractional minVersion", { minVersion: 1.5 }],
+    ["zero minVersion", { minVersion: 0 }],
+    ["negative maxAgeSeconds", { maxAgeSeconds: -1 }],
+    ["NaN maxAgeSeconds", { maxAgeSeconds: Number.NaN }],
+  ])("refuses %s instead of silently disabling the check", (_n, over) => {
+    expect(checkSnapshot(vector.snapshot, opts(over))).toEqual({ ok: false, reason: "invalid_options" });
   });
 
   it("rejects a wrong-length pinned key", () => {
@@ -86,5 +105,45 @@ describe("snapshot rejection", () => {
       ok: false,
       reason: "unknown_key",
     });
+  });
+
+  it("enforces byte limits and declaredLength ceiling", () => {
+    expect(checkSnapshot(vector.snapshot, { ...opts(), declaredLength: 45 * 1024 * 1024 })).toEqual({
+      ok: false,
+      reason: "malformed",
+    });
+
+    const rawStr = JSON.stringify(vector.snapshot);
+    expect(checkSnapshot(rawStr, { ...opts(), maxBytes: 10 })).toEqual({ ok: false, reason: "malformed" });
+    expect(checkSnapshot(rawStr, opts()).ok).toBe(true);
+
+    const rawBytes = new TextEncoder().encode(rawStr);
+    expect(checkSnapshot(rawBytes, { ...opts(), maxBytes: 10 })).toEqual({ ok: false, reason: "malformed" });
+    expect(checkSnapshot(rawBytes, opts()).ok).toBe(true);
+  });
+
+  it("rejects entries array exceeding MAX_ENTRIES ceiling", () => {
+    const oversized = { ...vector.snapshot, entries: new Array(1_000_001) };
+    expect(checkSnapshot(oversized, opts())).toEqual({ ok: false, reason: "malformed" });
+  });
+
+  it("rejects snapshots signed by a revoked key", () => {
+    expect(
+      checkSnapshot(vector.snapshot, { ...opts(), revokedKeyIds: new Set(["test-key-1"]) }),
+    ).toEqual({
+      ok: false,
+      reason: "revoked_key",
+    });
+
+    expect(
+      checkSnapshot(vector.snapshot, { ...opts(), revokedKeyIds: ["test-key-1"] }),
+    ).toEqual({
+      ok: false,
+      reason: "revoked_key",
+    });
+
+    expect(
+      checkSnapshot(vector.snapshot, { ...opts(), revokedKeyIds: new Set(["other-key"]) }).ok,
+    ).toBe(true);
   });
 });

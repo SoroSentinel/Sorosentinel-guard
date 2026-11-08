@@ -17,6 +17,7 @@ import {
   type AnalysisResult,
   type Snapshot,
 } from "../src/index.ts";
+import { UNICODE_UNSAFE_REGEX } from "../src/wording/sanitize.ts";
 
 interface Fixture {
   name: string;
@@ -192,14 +193,14 @@ describe("checkSnapshot", () => {
       fc.property(fc.date({ noInvalidDate: false }), (asOf) => {
         const r = checkSnapshot(vector.snapshot, opts(asOf));
         const age = (asOf.getTime() - generated) / 1000;
-        expect(r.ok).toBe(Number.isFinite(age) && age >= -5 * 60 && age <= 60 * 60);
+        expect(r.ok).toBe(Number.isFinite(age) && age >= -5 * 60 && age <= 15 * 60);
       }),
     );
   });
 });
 
 describe("sanitizeUntrusted", () => {
-  const UNSAFE = /[\u0000-\u001f\u007f-\u009f؜​-‏‪-‮⁠⁦-⁩﻿]/u;
+  const UNSAFE = UNICODE_UNSAFE_REGEX;
   const input = fc.oneof(fc.string({ unit: "binary", maxLength: 600 }), fc.uint8Array({ maxLength: 1200 }));
 
   it("output has no unsafe characters and is capped", () => {

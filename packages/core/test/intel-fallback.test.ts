@@ -211,6 +211,7 @@ describe("a failed fallback is never a clean result", () => {
       },
     ],
     ["http endpoint", { url: "http://intel.example.test" }],
+    ["credentials in the endpoint URL", { url: "https://user:secret@intel.example.test" }],
   ];
 
   it.each(failing)("%s: partial, and counterparties stay unchecked", async (_name, config) => {

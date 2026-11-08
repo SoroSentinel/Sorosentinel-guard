@@ -6,9 +6,11 @@ import { verify } from "@stellar/stellar-sdk/base";
  * Any failure means the snapshot is not used; it is never partially trusted.
  */
 
-export const MAX_ENTRIES = 10_000_000;
-/** Snapshots are published every few minutes; older than this is "protection data stale". TODO: confirm the product value. */
-export const DEFAULT_MAX_AGE_SECONDS = 60 * 60;
+export const MAX_ENTRIES = 1_000_000;
+/** Maximum allowed serialized snapshot size in bytes (40 MiB). */
+export const MAX_SNAPSHOT_BYTES = 40 * 1024 * 1024;
+/** Snapshots are published every few minutes; older than 15 minutes is "protection data stale". */
+export const DEFAULT_MAX_AGE_SECONDS = 15 * 60;
 /** Tolerated clock skew for a snapshot dated after `asOf`. */
 export const MAX_FUTURE_SKEW_SECONDS = 5 * 60;
 
@@ -33,10 +35,13 @@ export interface Snapshot {
 export type SnapshotRejection =
   | "malformed"
   | "unknown_key"
+  | "revoked_key"
   | "bad_signature"
   | "network_mismatch"
   | "stale"
-  | "from_future";
+  | "from_future"
+  | "rollback"
+  | "invalid_options";
 
 export type SnapshotCheck =
   | { ok: true; snapshot: Snapshot; entries: ReadonlySet<string> }
@@ -50,10 +55,39 @@ export interface SnapshotOptions {
   /** Reference time supplied by the caller (Guard never reads the clock). */
   asOf: Date;
   maxAgeSeconds?: number;
+  /** Minimum version to accept, persisted from the last good snapshot to prevent rollback. */
+  minVersion?: number;
+  /** Declared or measured size of the snapshot in bytes, rejected if over maxBytes. */
+  declaredLength?: number;
+  /** Maximum allowed size in bytes (defaults to MAX_SNAPSHOT_BYTES). */
+  maxBytes?: number;
+  /** Set or list of revoked key IDs that Guard must refuse to trust even if pinned. */
+  revokedKeyIds?: ReadonlySet<string> | readonly string[];
 }
 
 /** Strict structural parse: exact field set, every pattern, sorted unique entries. */
-export function parseSnapshot(raw: unknown): Snapshot | null {
+export function parseSnapshot(raw: unknown, opts?: { maxBytes?: number; declaredLength?: number }): Snapshot | null {
+  const maxBytes = opts?.maxBytes ?? MAX_SNAPSHOT_BYTES;
+  if (opts?.declaredLength !== undefined && opts.declaredLength > maxBytes) {
+    return null;
+  }
+  if (raw instanceof Uint8Array) {
+    if (raw.byteLength > maxBytes) return null;
+    try {
+      raw = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(raw));
+    } catch {
+      return null;
+    }
+  } else if (typeof raw === "string") {
+    if (raw.length > maxBytes) return null;
+    const byteLength = new TextEncoder().encode(raw).byteLength;
+    if (byteLength > maxBytes) return null;
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
   const o = raw as Record<string, unknown>;
   const keys = Object.keys(o);
@@ -100,8 +134,12 @@ export function snapshotPayload(s: Snapshot): Uint8Array {
 
 /** Parses, checks network and age, and verifies the Ed25519 signature against a pinned key. */
 export function checkSnapshot(raw: unknown, opts: SnapshotOptions): SnapshotCheck {
-  const s = parseSnapshot(raw);
+  if (!validOptions(opts)) return { ok: false, reason: "invalid_options" };
+  const s = parseSnapshot(raw, opts);
   if (s === null) return { ok: false, reason: "malformed" };
+  if (isRevoked(s.key_id, opts.revokedKeyIds)) {
+    return { ok: false, reason: "revoked_key" };
+  }
   const key = opts.pinnedKeys[s.key_id];
   if (key === undefined || key.length !== 32) return { ok: false, reason: "unknown_key" };
   const sig = decodeBase64(s.signature);
@@ -114,6 +152,12 @@ export function checkSnapshot(raw: unknown, opts: SnapshotOptions): SnapshotChec
   }
   if (!valid) return { ok: false, reason: "bad_signature" };
   if (s.network !== opts.network) return { ok: false, reason: "network_mismatch" };
+  // A minVersion read back from storage that is not a positive integer would
+  // otherwise compare false and silently switch rollback protection off.
+  if (opts.minVersion !== undefined) {
+    if (!Number.isSafeInteger(opts.minVersion) || opts.minVersion < 1) return { ok: false, reason: "invalid_options" };
+    if (s.version < opts.minVersion) return { ok: false, reason: "rollback" };
+  }
 
   const asOfMs = opts.asOf.getTime();
   if (!Number.isFinite(asOfMs)) return { ok: false, reason: "stale" };
@@ -130,4 +174,17 @@ function decodeBase64(s: string): Uint8Array | null {
   } catch {
     return null;
   }
+}
+
+function isRevoked(keyId: string, revoked?: ReadonlySet<string> | readonly string[]): boolean {
+  if (revoked === undefined) return false;
+  if (revoked instanceof Set) return revoked.has(keyId);
+  if (Array.isArray(revoked)) return revoked.includes(keyId);
+  return false;
+}
+
+/** Numeric options must be finite and positive; anything else is a caller bug, not a usable bound. */
+function validOptions(opts: SnapshotOptions): boolean {
+  const positive = (n: number | undefined) => n === undefined || (Number.isFinite(n) && n > 0);
+  return positive(opts.maxAgeSeconds) && positive(opts.maxBytes) && (opts.declaredLength === undefined || (Number.isSafeInteger(opts.declaredLength) && opts.declaredLength >= 0));
 }
