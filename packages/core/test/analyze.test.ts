@@ -25,6 +25,23 @@ describe("analyze status", () => {
     }
   });
 
+  it("truncated and invalid-padding base64 fixtures fail loud with decode_failed", () => {
+    for (const name of [
+      "hostile/truncated_xdr.json",
+      "hostile/invalid_base64_padding.json",
+      "hostile/missing_base64_padding.json",
+      "hostile/excess_base64_padding.json",
+      "hostile/noncanonical_base64_pad_bits.json",
+    ]) {
+      const r = run(name);
+      expect(r.status, name).toBe("unanalyzable");
+      expect(r.unanalyzableReason, name).toBe("decode_failed");
+      expect(r.txHash, name).toBeNull();
+      expect(r.operationCount, name).toBe(0);
+      expect(r.notChecked, name).toEqual(["NC-DECODE"]);
+    }
+  });
+
   it("an empty passphrase is unanalyzable", () => {
     expect(run("benign/payment_native.json").status).not.toBe("unanalyzable");
     const f = JSON.parse(readFileSync(new URL("benign/payment_native.json", FIXTURES), "utf8")) as { xdr: string };

@@ -32,8 +32,8 @@ describe("replay harness (E2)", () => {
     const lines = [...fixtureLines("hostile"), "", "not json", JSON.stringify({ xdr: 1 })];
     const s = replay(lines);
     expect(s.total).toBe(lines.length - 1); // blank line skipped
-    expect(s.unanalyzableByReason).toEqual({ decode_failed: 2, bad_input_line: 2 });
-    expect(s.unanalyzable).toBe(4);
+    expect(s.unanalyzableByReason).toEqual({ decode_failed: 6, bad_input_line: 2 });
+    expect(s.unanalyzable).toBe(8);
     expect(s.networks.unknown).toBe(1);
     expect(s.envelopes.fee_bump).toBe(1);
     expect(s.firstFailureLines.every((n) => Number.isInteger(n) && n > 0)).toBe(true);

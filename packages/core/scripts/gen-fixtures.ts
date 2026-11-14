@@ -444,5 +444,13 @@ writeUnanalyzable("malformed_base64", "Not base64", P, "AAAA%%%not-base64", "dec
   const good = builder(P).addOperation(Operation.payment({ destination: other.publicKey(), asset: Asset.native(), amount: "1" })).build().toXDR();
   writeUnanalyzable("truncated_xdr", "Valid envelope truncated mid-operation", P, good.slice(0, Math.floor(good.length / 2)), "decode_failed");
 }
+{
+  const padded = signed(builder(T).addOperation(Operation.changeTrust({ asset: usdc })).build(), signer).toXDR();
+  if (!padded.endsWith("==")) throw new Error("expected a 2-pad base64 envelope fixture");
+  writeUnanalyzable("invalid_base64_padding", "Valid envelope missing one required trailing '=' pad character", T, padded.slice(0, -1), "decode_failed");
+  writeUnanalyzable("missing_base64_padding", "Valid envelope with trailing '==' padding stripped", T, padded.slice(0, -2), "decode_failed");
+  writeUnanalyzable("excess_base64_padding", "Valid envelope with extra '=' padding appended", T, padded + "====", "decode_failed");
+  writeUnanalyzable("noncanonical_base64_pad_bits", "Valid envelope with non-zero unused bits before '==' padding", T, padded.slice(0, -3) + "h==", "decode_failed");
+}
 
 console.log("fixtures written to", OUT.pathname);

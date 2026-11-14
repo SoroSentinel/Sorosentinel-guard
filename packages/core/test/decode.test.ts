@@ -163,6 +163,36 @@ describe("hostile input", () => {
     expect(decodeEnvelope(input, P)).toEqual({ ok: false, status: "unanalyzable", reason: "decode_failed" });
   });
 
+  it("rejects malformed base64 padding, stripped padding, non-zero pad bits, and whitespace", () => {
+    const twoPad = fixtures.find((f) => f.name === "change_trust")!;
+    const onePad = fixtures.find((f) => f.name === "create_account")!;
+    expect(twoPad.xdr.endsWith("==")).toBe(true);
+    expect(onePad.xdr.endsWith("=")).toBe(true);
+    expect(onePad.xdr.endsWith("==")).toBe(false);
+
+    const malformed = [
+      twoPad.xdr.slice(0, -1), // missing 1 required '=' (len % 4 === 3)
+      twoPad.xdr.slice(0, -2), // stripped '==' padding (len % 4 === 2)
+      twoPad.xdr.slice(0, -3), // truncated into 4n + 1 length
+      onePad.xdr.slice(0, -1), // stripped single '=' padding (len % 4 === 3)
+      twoPad.xdr + "=", // extra '=' (len % 4 === 1)
+      twoPad.xdr + "====", // 6 '=' pad chars on a multiple-of-4 length
+      "AAAA=" + twoPad.xdr.slice(5), // '=' inside body
+      " " + twoPad.xdr + "\n", // surrounding whitespace
+      twoPad.xdr.slice(0, -3) + "h==", // non-zero unused 4 pad bits before '=='
+      onePad.xdr.slice(0, -2) + "h=", // non-zero unused 2 pad bits before '='
+      "====", // pad-only input
+    ];
+
+    for (const bad of malformed) {
+      expect(decodeEnvelope(bad, twoPad.network_passphrase)).toEqual({
+        ok: false,
+        status: "unanalyzable",
+        reason: "decode_failed",
+      });
+    }
+  });
+
   it("never throws on byte-level mutations of a valid envelope", () => {
     const bytes = Uint8Array.from(atob(valid), (c) => c.charCodeAt(0));
     let decoded = 0;

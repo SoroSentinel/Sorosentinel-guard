@@ -9,6 +9,34 @@ import type { AccountRef, DecodeResult, DecodedTransaction, Memo, TimeBounds, Un
 // TODO(verify): largest valid envelope (Soroban transactions can be large).
 export const MAX_ENVELOPE_BASE64_LENGTH = 256 * 1024;
 const MAX_PASSPHRASE_LENGTH = 256;
+const EQUALS = 0x3d; // "="
+const STANDARD_BASE64 = /^[A-Za-z0-9+/]+$/;
+
+function base64SixBit(code: number): number {
+  if (code >= 0x41 && code <= 0x5a) return code - 0x41;
+  if (code >= 0x61 && code <= 0x7a) return code - 0x61 + 26;
+  if (code >= 0x30 && code <= 0x39) return code - 0x30 + 52;
+  if (code === 0x2b) return 62;
+  if (code === 0x2f) return 63;
+  return -1;
+}
+
+/**
+ * Enforces canonical RFC 4648 §4 / §3.5 base64 before XDR decoding so lenient
+ * runtime decoders never accept missing `=` padding, excess `=`, embedded
+ * whitespace, or non-zero unused padding bits.
+ */
+function isCanonicalBase64(s: string): boolean {
+  if (s.length === 0 || s.length % 4 !== 0) return false;
+  let body = s.length;
+  while (body > 0 && s.charCodeAt(body - 1) === EQUALS) body--;
+  const pads = s.length - body;
+  if (pads > 2 || body === 0) return false;
+  if (!STANDARD_BASE64.test(s.slice(0, body))) return false;
+  if (pads === 1) return (base64SixBit(s.charCodeAt(body - 1)) & 0b000011) === 0;
+  if (pads === 2) return (base64SixBit(s.charCodeAt(body - 1)) & 0b001111) === 0;
+  return true;
+}
 
 /** Decoded transaction plus the raw operations that effect derivation reads. */
 export interface AnalysisInput {
@@ -37,6 +65,9 @@ export function decodeForAnalysis(envelopeBase64: string, networkPassphrase: str
   }
   if (networkPassphrase.length === 0 || networkPassphrase.length > MAX_PASSPHRASE_LENGTH) {
     return { ok: false, status: "unanalyzable", reason: "invalid_network_passphrase" };
+  }
+  if (!isCanonicalBase64(envelopeBase64)) {
+    return { ok: false, status: "unanalyzable", reason: "decode_failed" };
   }
   try {
     return { ok: true, input: decodeUnchecked(envelopeBase64, networkPassphrase) };
