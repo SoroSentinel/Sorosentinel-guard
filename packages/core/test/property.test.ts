@@ -3,15 +3,28 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 
+import {
+  Account,
+  Asset,
+  Contract,
+  MuxedAccount,
+  Operation,
+  StrKey,
+  TimeoutInfinite,
+  TransactionBuilder,
+  xdr,
+} from "@stellar/stellar-sdk/base";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
+import { accountRef } from "../src/decode/account.ts";
 import {
   KeyError,
   MAX_DISPLAY_LENGTH,
   analyze,
   canonicalKey,
   checkSnapshot,
+  decodeAuthEntry,
   decodeEnvelope,
   sanitizeUntrusted,
   type AnalysisResult,
@@ -218,6 +231,130 @@ describe("sanitizeUntrusted", () => {
       fc.property(input, (x) => {
         const once = sanitizeUntrusted(x);
         expect(sanitizeUntrusted(once)).toBe(once);
+      }),
+    );
+  });
+});
+
+describe("muxed account normalization", () => {
+  const ed25519Bytes = fc.uint8Array({ minLength: 32, maxLength: 32 });
+  const uint64Id = fc.oneof(
+    fc.constantFrom(0n, 1n, 9_007_199_254_740_993n, 18_446_744_073_709_551_615n),
+    fc.bigInt({ min: 0n, max: 18_446_744_073_709_551_615n }),
+  );
+  const contractId = StrKey.encodeContract(new Uint8Array(32).fill(7));
+  const rootInvocation = (() => {
+    const call = new Contract(contractId).call("transfer");
+    if (call.body.type !== "invokeHostFunction" || call.body.invokeHostFunctionOp.hostFunction.type !== "hostFunctionTypeInvokeContract") {
+      throw new Error("unexpected contract call shape");
+    }
+    return new xdr.SorobanAuthorizedInvocation({
+      function: xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(call.body.invokeHostFunctionOp.hostFunction.invokeContract),
+      subInvocations: [],
+    });
+  })();
+
+  it("normalizes arbitrary M... muxed accounts strictly to SDK G... base address and exact uint64 id", () => {
+    fc.assert(
+      fc.property(ed25519Bytes, uint64Id, (rawKey, subId) => {
+        const gAddress = StrKey.encodeEd25519PublicKey(rawKey);
+        const muxed = new MuxedAccount(new Account(gAddress, "100"), subId.toString());
+        const mAddress = muxed.accountId();
+        expect(mAddress.startsWith("M")).toBe(true);
+
+        const parsedFromM = MuxedAccount.fromAddress(mAddress, "100");
+        const normalized = accountRef(parsedFromM.toXDRObject());
+
+        expect(normalized).toEqual({
+          account: parsedFromM.baseAccount().accountId(),
+          muxedId: subId.toString(),
+        });
+        expect(normalized.account).toBe(gAddress);
+        expect(accountRef(parsedFromM.toXDRObject())).toEqual(normalized);
+
+        expect(canonicalKey("public", "account", normalized.account)).toBe(`public|account|${gAddress}`);
+        expect(() => canonicalKey("public", "account", mAddress)).toThrowError(KeyError);
+      }),
+    );
+  });
+
+  it("normalizes muxed transaction sources, operation sources, and payment destinations in decodeEnvelope and analyze", () => {
+    fc.assert(
+      fc.property(ed25519Bytes, uint64Id, ed25519Bytes, uint64Id, (srcKey, srcId, dstKey, dstId) => {
+        const srcBase = StrKey.encodeEd25519PublicKey(srcKey);
+        const dstBase = StrKey.encodeEd25519PublicKey(dstKey);
+        const srcMuxed = new MuxedAccount(new Account(srcBase, "100"), srcId.toString());
+        const dstMuxed = new MuxedAccount(new Account(dstBase, "0"), dstId.toString());
+
+        const tx = new TransactionBuilder(srcMuxed, { fee: "100", networkPassphrase: PUBLIC })
+          .setTimeout(TimeoutInfinite)
+          .addOperation(
+            Operation.payment({
+              source: dstMuxed.accountId(),
+              destination: dstMuxed.accountId(),
+              asset: Asset.native(),
+              amount: "1",
+            }),
+          )
+          .build();
+
+        const xdrB64 = tx.toXDR();
+        const decoded = decodeEnvelope(xdrB64, PUBLIC);
+        expect(decoded.ok).toBe(true);
+        if (!decoded.ok) return;
+
+        expect(decoded.tx.source).toEqual({
+          account: srcMuxed.baseAccount().accountId(),
+          muxedId: srcId.toString(),
+        });
+        expect(decoded.tx.operations[0]?.source).toEqual({
+          account: dstMuxed.baseAccount().accountId(),
+          muxedId: dstId.toString(),
+        });
+
+        const result = analyze(xdrB64, { networkPassphrase: PUBLIC });
+        expect(result.status).toBe("partial");
+        for (const effect of result.effects) {
+          expect(effect.account.startsWith("G")).toBe(true);
+          expect([srcBase, dstBase]).toContain(effect.account);
+          expect(typeof effect.deltaMin).toBe("bigint");
+          expect(effect.deltaMax === null || typeof effect.deltaMax === "bigint").toBe(true);
+        }
+      }),
+    );
+  });
+
+  it("normalizes Soroban scAddressTypeMuxedAccount credentials strictly to G... base address and exact uint64 id", () => {
+    fc.assert(
+      fc.property(ed25519Bytes, uint64Id, (rawKey, subId) => {
+        const gAddress = StrKey.encodeEd25519PublicKey(rawKey);
+        const muxed = new MuxedAccount(new Account(gAddress, "0"), subId.toString());
+        const scAddr = xdr.ScAddress.scAddressTypeMuxedAccount(
+          new xdr.MuxedEd25519Account({ id: subId, ed25519: rawKey }),
+        );
+        const entry = new xdr.SorobanAuthorizationEntry({
+          credentials: xdr.SorobanCredentials.sorobanCredentialsAddress(
+            new xdr.SorobanAddressCredentials({
+              address: scAddr,
+              nonce: 7n,
+              signatureExpirationLedger: 5_000_000,
+              signature: xdr.ScVal.scvVoid(),
+            }),
+          ),
+          rootInvocation,
+        });
+
+        const decoded = decodeAuthEntry(entry.toXDR("base64"), TESTNET);
+        expect(decoded).toEqual({
+          ok: true,
+          entry: expect.objectContaining({
+            address: {
+              kind: "account",
+              account: muxed.baseAccount().accountId(),
+              muxedId: subId.toString(),
+            },
+          }),
+        });
       }),
     );
   });
